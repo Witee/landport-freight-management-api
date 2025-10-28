@@ -1,0 +1,57 @@
+{
+  "name": "landport-freight-management-api",
+  "description": "Hello Egg.js",
+  "private": true,
+  "type": "module",
+  "egg": {
+    "typescript": true
+  },
+  "scripts": {
+    "start": "eggctl start --daemon --title=egg-server-landport-freight-management-api",
+    "stop": "eggctl stop --title=egg-server-landport-freight-management-api",
+    "dev": "egg-bin dev",
+    "test:local": "cross-env NODE_OPTIONS=\"--import @oxc-node/core/register\" vitest run",
+    "pretest": "npm run clean && npm run lint -- --fix",
+    "test": "npm run test:local",
+    "preci": "npm run clean && npm run lint",
+    "ci": "npm run test:local -- --coverage",
+    "postci": "npm run prepublishOnly && npm start && sleep 10 && npm stop && npm run clean",
+    "lint": "oxlint --type-aware",
+    "typecheck": "tsc --noEmit",
+    "tsc": "tsc",
+    "clean": "tsc -b --clean",
+    "prepublishOnly": "npm run clean && npm run tsc"
+  },
+  "dependencies": {
+    "@eggjs/scripts": "beta",
+    "@eggjs/tracer": "beta",
+    "egg": "beta"
+  },
+  "devDependencies": {
+    "@eggjs/bin": "beta",
+    "@eggjs/mock": "beta",
+    "@eggjs/tsconfig": "beta",
+    "@oxc-node/core": "^0.0.32",
+    "@types/node": "24",
+    "cross-env": "10",
+    "oxlint": "1",
+    "oxlint-tsgolint": "^0.3.0",
+    "typescript": "5",
+    "vitest": "4",
+    "@vitest/coverage-v8": "4"
+  },
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "homepage": "https://github.com/YOUR_USERNAME/YOUR_REPO#readme",
+  "bugs": {
+    "url": "https://github.com/YOUR_USERNAME/YOUR_REPO/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/YOUR_USERNAME/YOUR_REPO.git"
+  },
+  "author": "Author Name <author.name@mail.com>",
+  "license": "MIT",
+  "packageManager": "npm@10.2.4"
+}
