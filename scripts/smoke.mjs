@@ -166,6 +166,9 @@ const main = async () => {
     // re-fetch detail to verify images bound
     results.detailAfterUpload = await jsonReq(base, 'GET', `/api/goods/${goodsId}`, null, userToken);
 
+    // search by keyword (should match waybillNo or names/phones)
+    results.searchKeyword = await jsonReq(base, 'GET', `/api/goods/list?keyword=SF123456`, null, userToken);
+
     // user delete
     results.delete = await jsonReq(base, 'DELETE', `/api/goods/${goodsId}`, null, userToken);
 
@@ -206,6 +209,11 @@ const main = async () => {
     const detailAfter = results.detailAfterUpload?.data?.data || {};
     summary.detailAfterUpload.images = Array.isArray(detailAfter.images) ? detailAfter.images : [];
     summary.detailAfterUpload.imagesCount = (summary.detailAfterUpload.images || []).length;
+
+    // search count
+    const searchData = results.searchKeyword?.data?.data || {};
+    const listArr = Array.isArray(searchData.list) ? searchData.list : [];
+    summary.searchKeyword.count = listArr.length;
 
     console.log(JSON.stringify({ base, summary }, null, 2));
     if (proc) {
