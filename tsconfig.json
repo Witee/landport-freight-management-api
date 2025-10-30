@@ -5,6 +5,23 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "declaration": false,
-    "baseUrl": "."
+    "baseUrl": ".",
+    "erasableSyntaxOnly": false,
+    "allowImportingTsExtensions": false,
+    "strict": true,
+    "noImplicitAny": false,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "paths": {
+      "*": ["typings/*"],
+      "@app/*": ["app/*"],
+      "@config/*": ["config/*"]
+    }
+  },
+  "include": ["app/**/*", "config/**/*", "typings/**/*"],
+  "exclude": ["app/public", "app/views", "node_modules", "dist", "logs"],
+  "ts-node": {
+    "esm": true,
+    "experimentalSpecifierResolution": "node"
   }
 }

@@ -1,15 +1,15 @@
 {
   "name": "landport-freight-management-api",
-  "description": "Hello Egg.js",
+  "description": "api",
   "private": true,
-  "type": "module",
+  "type": "commonjs",
   "egg": {
     "typescript": true
   },
   "scripts": {
-    "start": "eggctl start --daemon --title=egg-server-landport-freight-management-api",
-    "stop": "eggctl stop --title=egg-server-landport-freight-management-api",
-    "dev": "egg-bin dev",
+    "start": "eggctl start --daemon --title=landport-freight-management-api",
+    "stop": "eggctl stop --title=landport-freight-management-api",
+    "dev": "cross-env NODE_OPTIONS=\"--loader ts-node/esm --experimental-specifier-resolution=node\" egg-bin dev",
     "test:local": "cross-env NODE_OPTIONS=\"--import @oxc-node/core/register\" vitest run",
     "pretest": "npm run clean && npm run lint -- --fix",
     "test": "npm run test:local",
@@ -25,7 +25,15 @@
   "dependencies": {
     "@eggjs/scripts": "beta",
     "@eggjs/tracer": "beta",
-    "egg": "beta"
+    "bcryptjs": "^3.0.2",
+    "egg": "beta",
+    "egg-cors": "^3.0.1",
+    "egg-jwt": "^3.1.7",
+    "egg-redis": "^2.6.1",
+    "egg-sequelize": "^6.0.0",
+    "egg-validate": "^2.0.2",
+    "mysql2": "^3.15.3",
+    "wx-jsapi": "^0.0.1"
   },
   "devDependencies": {
     "@eggjs/bin": "beta",
@@ -33,25 +41,18 @@
     "@eggjs/tsconfig": "beta",
     "@oxc-node/core": "^0.0.32",
     "@types/node": "24",
+    "@vitest/coverage-v8": "4",
     "cross-env": "10",
     "oxlint": "1",
     "oxlint-tsgolint": "^0.3.0",
+    "ts-node": "^10",
     "typescript": "5",
-    "vitest": "4",
-    "@vitest/coverage-v8": "4"
+    "vitest": "4"
   },
   "engines": {
     "node": ">=22.18.0"
   },
-  "homepage": "https://github.com/YOUR_USERNAME/YOUR_REPO#readme",
-  "bugs": {
-    "url": "https://github.com/YOUR_USERNAME/YOUR_REPO/issues"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/YOUR_USERNAME/YOUR_REPO.git"
-  },
-  "author": "Author Name <author.name@mail.com>",
+  "author": "Witee",
   "license": "MIT",
   "packageManager": "npm@10.2.4"
 }

@@ -5,3 +5,23 @@
 import 'egg';
 export * from 'egg';
 export as namespace Egg;
+
+// 扩展 Egg 类型定义
+declare module 'egg' {
+  interface Context {
+    model: {
+      Goods: any;
+      User: any;
+    };
+    validate(rules: any): void;
+  }
+
+  interface Service {
+    goodsService: any;
+    userService: any;
+  }
+
+  interface EggAppConfig {
+    validate: any;
+  }
+}

@@ -1,29 +1,40 @@
-import { defineConfigFactory, type PartialEggConfig } from 'egg';
-
-export default defineConfigFactory((appInfo) => {
+const path = require('path');
+module.exports = (appInfo) => {
   const config = {
-    // use for cookie sign key, should change to your own and keep security
     keys: appInfo.name + '_{{keys}}',
-
-    // add your egg config in here
-    middleware: [] as string[],
-
-    // change multipart mode to file
-    // @see https://github.com/eggjs/multipart/blob/master/src/config/config.default.ts#L104
+    middleware: ['errorHandler', 'jwtAuth'],
     multipart: {
-      mode: 'file' as const,
+      mode: 'file',
     },
-  } as PartialEggConfig;
-
-  // add your special config in here
-  // Usage: `app.config.bizConfig.sourceUrl`
+  };
   const bizConfig = {
-    sourceUrl: `https://github.com/eggjs/examples/tree/master/${appInfo.name}`,
+    multipart: {
+      mode: 'file',
+      fileSize: '10mb',
+      fileExtensions: ['.jpg', '.jpeg', '.png', '.gif'],
+    },
+    static: {
+      prefix: '/public',
+      dir: path.join(appInfo.baseDir, 'app/public'),
+    },
+    jwt: {
+      secret: 'G7xtJPiwG',
+      expiresIn: '7d',
+    },
+    validate: {
+      convert: true,
+      widelyUndefined: true,
+    },
+    security: {
+      csrf: {
+        enable: false,
+      },
+      domainWhiteList: ['http://localhost:3000'],
+    },
+    cors: {
+      origin: '*',
+      allowMethods: 'GET,HEAD,PUT,POST,DELETE,PATCH',
+    },
   };
-
-  // the return config will combines to EggAppConfig
-  return {
-    ...config,
-    bizConfig,
-  };
-});
+  return Object.assign({}, config, { bizConfig });
+};
