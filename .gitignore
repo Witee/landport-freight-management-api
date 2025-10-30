@@ -16,7 +16,7 @@ app/**/*.js
 test/**/*.js
 config/**/*.js
 app/**/*.map
-app/public/uploads/*
+app/public/uploads/
 test/**/*.map
 config/**/*.map
 .package-lock.json
