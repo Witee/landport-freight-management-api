@@ -1,4 +1,4 @@
-module.exports = (_options, app) => {
+export default (_options, app) => {
   return async function jwtAuth(ctx, next) {
     try {
       const auth = ctx.get('authorization') || ctx.get('Authorization') || '';

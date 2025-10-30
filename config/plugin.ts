@@ -27,4 +27,4 @@ const plugin: EggPlugin = {
   },
 };
 
-module.exports = plugin;
+export default plugin;

@@ -1,4 +1,6 @@
 import { Controller } from 'egg';
+import fs from 'fs';
+import path from 'path';
 
 export default class UploadController extends Controller {
   /**
@@ -8,25 +10,29 @@ export default class UploadController extends Controller {
     const { ctx } = this;
 
     try {
-      const file = (ctx.request.files && ctx.request.files[0]) as any;
+      const file = ctx.request.files?.[0] as any;
       if (!file) {
         ctx.throw(400, '未选择文件');
+        return;
       }
 
-      // 验证文件类型
-      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
-      if (!allowedTypes.includes((file as any).mimeType)) {
+      // 验证文件类型（既校验 mime，又兜底校验扩展名）
+      const allowedMimes = new Set(['image/jpeg', 'image/png', 'image/gif']);
+      const allowedExts = new Set(['.jpg', '.jpeg', '.png', '.gif']);
+      const mime: string = (file as any).mime || '';
+      const ext = path.extname((file as any).filename || '').toLowerCase();
+      if (!allowedMimes.has(mime) && !allowedExts.has(ext)) {
         ctx.throw(400, '只支持 jpg、png、gif 格式的图片');
       }
 
-      // 验证文件大小 (最大 5MB)
+      // 验证文件大小 (最大 5MB)，优先使用 file.size，没有则使用 stat
       const maxSize = 5 * 1024 * 1024;
-      if ((file as any).size > maxSize) {
+      const fileSize: number = (file as any).size ?? fs.statSync((file as any).filepath).size;
+      if (fileSize > maxSize) {
         ctx.throw(400, '图片大小不能超过 5MB');
       }
 
-      // 这里需要根据你的存储方案实现文件上传
-      // 以下是一个示例，你需要替换为实际的存储逻辑
+      // 存储文件（本地示例：copyFile 更稳健）
       const result = await this.uploadToCloudStorage(file as any);
 
       ctx.body = {
@@ -37,8 +43,12 @@ export default class UploadController extends Controller {
           filename: result.filename,
         },
       };
-    } catch (error) {
+    } catch (error: any) {
       ctx.logger.error('文件上传失败:', error);
+      if (error && (error.status || error.statusCode)) {
+        // 透传业务性错误（如 400），避免一律变成 500
+        throw error;
+      }
       ctx.throw(500, '文件上传失败');
     } finally {
       // 清理临时文件
@@ -50,35 +60,21 @@ export default class UploadController extends Controller {
    * 上传到云存储（示例方法，需要根据实际云存储实现）
    */
   private async uploadToCloudStorage(file: any) {
-    // 这里应该实现你的文件上传逻辑
-    // 例如上传到阿里云OSS、腾讯云COS、七牛云等
-    // 返回文件的访问URL
-
-    // 示例：本地存储（仅用于开发环境）
-    const fs = require('fs');
-    const path = require('path');
-
+    // 本地存储（仅用于开发环境示例）
     const uploadDir = path.join(process.cwd(), 'app/public/uploads');
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
 
-    const filename = `${Date.now()}-${Math.random().toString(36).substr(2)}${path.extname(file.filename)}`;
-    const filepath = path.join(uploadDir, filename);
+    const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}${
+      path.extname(file.filename || '') || '.png'
+    }`;
+    const targetPath = path.join(uploadDir, filename);
 
-    const fileStream = fs.createReadStream(file.filepath);
-    const writeStream = fs.createWriteStream(filepath);
+    // 直接拷贝临时文件到目标路径，避免流事件的不确定性
+    await fs.promises.copyFile(file.filepath, targetPath);
 
-    await new Promise((resolve, reject) => {
-      fileStream.pipe(writeStream);
-      writeStream.on('finish', resolve);
-      writeStream.on('error', reject);
-    });
-
-    return {
-      url: `/public/uploads/${filename}`,
-      filename,
-    };
+    return { url: `/public/uploads/${filename}`, filename };
   }
 
   /**
@@ -89,31 +85,32 @@ export default class UploadController extends Controller {
 
     try {
       const files = (ctx.request.files || []) as any[];
-      const results: any[] = [];
+      const allowedMimes = new Set(['image/jpeg', 'image/png', 'image/gif']);
+      const allowedExts = new Set(['.jpg', '.jpeg', '.png', '.gif']);
+      const maxSize = 5 * 1024 * 1024;
 
-      for (const file of files as any[]) {
-        // 验证文件类型和大小
-        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
-        if (!allowedTypes.includes((file as any).mimeType)) {
-          continue; // 跳过不支持的格式
-        }
+      const tasks = (files as any[]).map(async (file: any) => {
+        const mime: string = (file as any).mime || '';
+        const ext = path.extname((file as any).filename || '').toLowerCase();
+        const size = (file as any).size ?? fs.statSync((file as any).filepath).size;
+        if (!(allowedMimes.has(mime) || allowedExts.has(ext))) return null;
+        if (size > maxSize) return null;
+        return await this.uploadToCloudStorage(file as any);
+      });
 
-        const maxSize = 5 * 1024 * 1024;
-        if ((file as any).size > maxSize) {
-          continue; // 跳过过大的文件
-        }
-
-        const result = await this.uploadToCloudStorage(file as any);
-        results.push(result);
-      }
+      const raw = await Promise.all(tasks);
+      const results = raw.filter(Boolean) as any[];
 
       ctx.body = {
         code: 200,
         message: '上传成功',
         data: results,
       };
-    } catch (error) {
+    } catch (error: any) {
       ctx.logger.error('批量上传失败:', error);
+      if (error && (error.status || error.statusCode)) {
+        throw error;
+      }
       ctx.throw(500, '文件上传失败');
     } finally {
       await ctx.cleanupRequestFiles();

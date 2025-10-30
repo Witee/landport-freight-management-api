@@ -1,5 +1,6 @@
-const path = require('path');
-module.exports = (appInfo) => {
+import path from 'path';
+
+export default (appInfo) => {
   const config = {
     keys: appInfo.name + '_{{keys}}',
     middleware: ['errorHandler', 'jwtAuth'],
@@ -7,7 +8,7 @@ module.exports = (appInfo) => {
       mode: 'file',
     },
   };
-  const bizConfig = {
+  const userConfig = {
     multipart: {
       mode: 'file',
       fileSize: '10mb',
@@ -36,5 +37,5 @@ module.exports = (appInfo) => {
       allowMethods: 'GET,HEAD,PUT,POST,DELETE,PATCH',
     },
   };
-  return Object.assign({}, config, { bizConfig });
+  return { ...config, ...userConfig };
 };

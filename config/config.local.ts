@@ -1,4 +1,4 @@
-module.exports = {
+export default {
   sequelize: {
     dialect: 'mysql',
     host: '192.168.0.66',
@@ -7,6 +7,11 @@ module.exports = {
     username: 'root',
     password: 'Admin123.',
     timezone: '+08:00',
+    // 自动同步模型到数据库，仅用于本地开发环境
+    sync: {
+      alter: true,
+      force: false,
+    },
     define: {
       timestamps: true,
       paranoid: true,

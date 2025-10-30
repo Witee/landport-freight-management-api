@@ -1,4 +1,4 @@
-module.exports = (app) => {
+export default (app) => {
   const { STRING, INTEGER, DATE, ENUM } = app.Sequelize;
   const User = app.model.define(
     'User',

@@ -2,14 +2,15 @@
   "name": "landport-freight-management-api",
   "description": "api",
   "private": true,
-  "type": "commonjs",
+  "type": "module",
   "egg": {
     "typescript": true
   },
   "scripts": {
     "start": "eggctl start --daemon --title=landport-freight-management-api",
     "stop": "eggctl stop --title=landport-freight-management-api",
-    "dev": "cross-env NODE_OPTIONS=\"--loader ts-node/esm --experimental-specifier-resolution=node\" egg-bin dev",
+    "dev": "egg-bin dev",
+    "smoke": "node scripts/smoke.mjs",
     "test:local": "cross-env NODE_OPTIONS=\"--import @oxc-node/core/register\" vitest run",
     "pretest": "npm run clean && npm run lint -- --fix",
     "test": "npm run test:local",

@@ -1,4 +1,6 @@
-module.exports = () => {
+export default () => {
+  const getErrorStatus = (e: any): number => (e && (e.status || e.statusCode)) || 500;
+  const getErrorMessage = (e: any): string => (e && e.message) || 'Internal Server Error';
   return async function errorHandler(ctx, next) {
     try {
       await next();
@@ -6,14 +8,14 @@ module.exports = () => {
       if (ctx.status === 404 && !ctx.body) {
         ctx.body = { code: 404, message: 'Not Found' };
       }
-    } catch (err: any) {
-      const status = (err && (err.status || (err as any).statusCode)) || 500;
+    } catch (err) {
+      const status = getErrorStatus(err as any);
       ctx.status = status;
       ctx.body = {
         code: status,
-        message: err && err.message ? err.message : 'Internal Server Error',
+        message: getErrorMessage(err as any),
       };
-      ctx.app.emit('error', err, ctx);
+      ctx.app.emit('error', err as any, ctx);
     }
   };
 };

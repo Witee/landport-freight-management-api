@@ -1,4 +1,4 @@
-module.exports = (app) => {
+export default (app) => {
   const { controller, router } = app;
 
   // 认证相关

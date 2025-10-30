@@ -100,7 +100,7 @@ export default class GoodsController extends Controller {
     if (!hasPermission) {
       ctx.throw(403, '无权查看所有货物');
     }
-    const result = await ctx.service.goodsService.getGoodsList(query);
+    const result = await ctx.service.goodsService.getGoodsList(query, undefined);
     ctx.body = {
       code: 200,
       message: '获取成功',
