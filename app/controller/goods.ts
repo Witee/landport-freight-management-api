@@ -5,12 +5,14 @@ export default class GoodsController extends Controller {
   async create() {
     const { ctx } = this;
     ctx.validate({
+      name: { type: 'string', required: false, allowEmpty: true, max: 128 },
       receiverName: { type: 'string', required: true, min: 1, max: 64 },
       receiverPhone: { type: 'string', required: true, format: /^1[3-9]\d{9}$/ },
       senderName: { type: 'string', required: true, min: 1, max: 64 },
       senderPhone: { type: 'string', required: true, format: /^1[3-9]\d{9}$/ },
       volume: { type: 'number', required: true, min: 0 },
       weight: { type: 'number', required: true, min: 0 },
+      freight: { type: 'number', required: false, min: 0 },
       remark: { type: 'string', required: false, allowEmpty: true },
       images: { type: 'array', required: false },
     });
@@ -28,12 +30,14 @@ export default class GoodsController extends Controller {
   async update() {
     const { ctx } = this;
     ctx.validate({
+      name: { type: 'string', required: false, allowEmpty: true, max: 128 },
       receiverName: { type: 'string', required: false, min: 1, max: 64 },
       receiverPhone: { type: 'string', required: false, format: /^1[3-9]\d{9}$/ },
       senderName: { type: 'string', required: false, min: 1, max: 64 },
       senderPhone: { type: 'string', required: false, format: /^1[3-9]\d{9}$/ },
       volume: { type: 'number', required: false, min: 0 },
       weight: { type: 'number', required: false, min: 0 },
+      freight: { type: 'number', required: false, min: 0 },
       remark: { type: 'string', required: false, allowEmpty: true },
       images: { type: 'array', required: false },
       status: { type: 'string', required: false },
@@ -76,10 +80,19 @@ export default class GoodsController extends Controller {
     const query = ctx.query;
     const userId = ctx.state.user.userId;
     const result = await ctx.service.goodsService.getGoodsList(query, userId);
+    // 兜底：images 字段为 null 时转为空数组，避免前端判空麻烦
+    const normalized = {
+      ...result,
+      list: (result.list || []).map((item: any) => {
+        const j = item && item.toJSON ? item.toJSON() : item;
+        j.images = Array.isArray(j.images) ? j.images : [];
+        return j;
+      }),
+    };
     ctx.body = {
       code: 200,
       message: '获取成功',
-      data: result,
+      data: normalized,
     };
   }
 
@@ -114,10 +127,12 @@ export default class GoodsController extends Controller {
     const id = ctx.params && ctx.params.id;
     const userId = ctx.state.user.userId;
     const goods = await ctx.service.goodsService.getGoodsDetail(Number(id), userId);
+    const j = goods && (goods as any).toJSON ? (goods as any).toJSON() : goods;
+    j.images = Array.isArray(j.images) ? j.images : [];
     ctx.body = {
       code: 200,
       message: '获取成功',
-      data: goods,
+      data: j,
     };
   }
 

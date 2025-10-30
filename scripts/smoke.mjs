@@ -1,4 +1,6 @@
 /* Simple end-to-end smoke test for all routes */
+import { spawn } from 'node:child_process';
+console.log('[smoke] starting...');
 const baseCandidates = ['http://127.0.0.1:7001', 'http://127.0.0.1:7002'];
 
 async function pickBase() {
@@ -11,10 +13,42 @@ async function pickBase() {
   return baseCandidates[0];
 }
 
+async function waitForServer(base, timeoutMs = 25000) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    try {
+      const res = await fetch(base + '/api/goods/list');
+      if (res.ok || [400, 401, 403, 404, 405].includes(res.status)) return true;
+    } catch {}
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  return false;
+}
+
+async function ensureServer() {
+  let base = await pickBase();
+  let ok = await waitForServer(base, 3000);
+  if (ok) return { base, proc: null };
+
+  // try to start dev server
+  const proc = spawn('npm', ['run', 'dev'], { stdio: 'ignore', env: process.env });
+  // wait until ready
+  ok = await waitForServer(base, 25000);
+  if (!ok) {
+    try {
+      proc.kill('SIGTERM');
+    } catch {}
+    throw new Error('dev server not ready in time');
+  }
+  return { base, proc };
+}
+
 async function jsonReq(base, method, path, body, token) {
   const headers = { 'content-type': 'application/json' };
   if (token) headers['authorization'] = 'Bearer ' + token;
-  const res = await fetch(base + path, { method, headers, body: body ? JSON.stringify(body) : undefined });
+  const opts = { method, headers };
+  if (method !== 'GET' && body) opts.body = JSON.stringify(body);
+  const res = await fetch(base + path, opts);
   const text = await res.text();
   let data;
   try {
@@ -25,11 +59,14 @@ async function jsonReq(base, method, path, body, token) {
   return { status: res.status, data };
 }
 
-async function uploadSingle(base) {
+async function uploadSingle(base, token, goodsId) {
   const fd = new FormData();
   const blob = new Blob([Buffer.from('89504E470D0A1A0A', 'hex')], { type: 'image/png' });
   fd.append('file', blob, 'test.png');
-  const res = await fetch(base + '/api/upload/goods-image', { method: 'POST', body: fd });
+  if (goodsId) fd.append('goodsId', String(goodsId));
+  const headers = {};
+  if (token) headers['authorization'] = 'Bearer ' + token;
+  const res = await fetch(base + '/api/upload/goods-image', { method: 'POST', headers, body: fd });
   const text = await res.text();
   let data;
   try {
@@ -40,13 +77,16 @@ async function uploadSingle(base) {
   return { status: res.status, data };
 }
 
-async function uploadMultiple(base) {
+async function uploadMultiple(base, token, goodsId) {
   const fd = new FormData();
   const blob1 = new Blob([Buffer.from('89504E470D0A1A0A', 'hex')], { type: 'image/png' });
   const blob2 = new Blob([Buffer.from('89504E470D0A1A0A', 'hex')], { type: 'image/png' });
   fd.append('file', blob1, 'test1.png');
   fd.append('file', blob2, 'test2.png');
-  const res = await fetch(base + '/api/upload/multiple-images', { method: 'POST', body: fd });
+  if (goodsId) fd.append('goodsId', String(goodsId));
+  const headers = {};
+  if (token) headers['authorization'] = 'Bearer ' + token;
+  const res = await fetch(base + '/api/upload/multiple-images', { method: 'POST', headers, body: fd });
   const text = await res.text();
   let data;
   try {
@@ -57,8 +97,9 @@ async function uploadMultiple(base) {
   return { status: res.status, data };
 }
 
-(async () => {
-  const base = await pickBase();
+const main = async () => {
+  const { base, proc } = await ensureServer();
+  console.log('[smoke] base =', base);
   const results = {};
   try {
     // login admin
@@ -78,18 +119,21 @@ async function uploadMultiple(base) {
     });
     if (loginUser.status !== 200) throw new Error('login user failed ' + JSON.stringify(loginUser));
     const userToken = loginUser.data?.data?.token;
+    const userId = loginUser.data?.data?.user?.id;
 
     // user list
     results.list = await jsonReq(base, 'GET', '/api/goods/list', null, userToken);
 
     // user create goods
     const createBody = {
+      name: '测试货物',
       receiverName: '张三',
       receiverPhone: '13800138000',
       senderName: '李四',
       senderPhone: '13900139000',
       volume: 1.23,
       weight: 12.3,
+      freight: 88.88,
       remark: '首单',
       images: [],
     };
@@ -99,6 +143,9 @@ async function uploadMultiple(base) {
 
     // user detail
     results.detail = await jsonReq(base, 'GET', `/api/goods/${goodsId}`, null, userToken);
+    // quick check for new fields
+    const d = results.detail?.data?.data || {};
+    results.detail._fields = { name: d.name, freight: d.freight };
 
     // user update
     results.update = await jsonReq(base, 'PUT', `/api/goods/${goodsId}`, { remark: '已更新' }, userToken);
@@ -109,24 +156,76 @@ async function uploadMultiple(base) {
     // admin list-all
     results.listAll = await jsonReq(base, 'GET', '/api/goods/list-all', null, adminToken);
 
-    // upload single
-    results.uploadSingle = await uploadSingle(base);
+    // upload single (bind to goods)
+    results.uploadSingle = await uploadSingle(base, userToken, goodsId);
 
-    // upload multiple
-    results.uploadMultiple = await uploadMultiple(base);
+    // upload multiple (bind to goods)
+    results.uploadMultiple = await uploadMultiple(base, userToken, goodsId);
+
+    // re-fetch detail to verify images bound
+    results.detailAfterUpload = await jsonReq(base, 'GET', `/api/goods/${goodsId}`, null, userToken);
 
     // user delete
     results.delete = await jsonReq(base, 'DELETE', `/api/goods/${goodsId}`, null, userToken);
 
     // print concise summary
+    // check upload URL structure contains /public/uploads/YYYY-MM-DD/{userId}/
+    const today = new Date();
+    const yyyy = String(today.getFullYear());
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    const dateDir = `${yyyy}-${mm}-${dd}`;
+
+    const up1url = results.uploadSingle?.data?.data?.url;
+    const upMulUrls = Array.isArray(results.uploadMultiple?.data?.data)
+      ? results.uploadMultiple.data.data.map((x) => x.url)
+      : [];
+
+    const expectedPart = `/public/uploads/${dateDir}/${userId}/`;
+
     const summary = Object.fromEntries(
-      Object.entries(results).map(([k, v]) => [k, { status: v.status, code: v.data?.code, message: v.data?.message }])
+      Object.entries(results).map(([k, v]) => [
+        k,
+        {
+          status: v.status,
+          code: v.data?.code,
+          message: v.data?.message,
+          fields: v._fields,
+        },
+      ])
     );
+
+    summary.uploadSingle.url = up1url;
+    summary.uploadSingle.expectContains = expectedPart;
+    summary.uploadSingle.urlOk = typeof up1url === 'string' && up1url.includes(expectedPart);
+    summary.uploadMultiple.urls = upMulUrls;
+    summary.uploadMultiple.expectContains = expectedPart;
+    summary.uploadMultiple.urlsOk = upMulUrls.every((u) => typeof u === 'string' && u.includes(expectedPart));
+    // images length check after upload binding
+    const detailAfter = results.detailAfterUpload?.data?.data || {};
+    summary.detailAfterUpload.images = Array.isArray(detailAfter.images) ? detailAfter.images : [];
+    summary.detailAfterUpload.imagesCount = (summary.detailAfterUpload.images || []).length;
+
     console.log(JSON.stringify({ base, summary }, null, 2));
+    if (proc) {
+      try {
+        proc.kill('SIGTERM');
+      } catch {}
+    }
     process.exit(0);
   } catch (e) {
     console.error('SMOKE ERROR:', (e && e.stack) || e);
     console.error('Partial results:', results);
+    if (proc) {
+      try {
+        proc.kill('SIGTERM');
+      } catch {}
+    }
     process.exit(1);
   }
-})();
+};
+
+await main().catch((e) => {
+  console.error('SMOKE ERROR (tla):', (e && e.stack) || e);
+  process.exit(1);
+});

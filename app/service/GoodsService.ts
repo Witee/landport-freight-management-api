@@ -16,11 +16,14 @@ export default class GoodsService extends Service {
     if (GoodsModel && UserModel && !(GoodsModel.associations && GoodsModel.associations.creator)) {
       GoodsModel.belongsTo(UserModel, { as: 'creator', foreignKey: 'createdBy' });
     }
-    const shouldSync = this.app.config.env === 'local' && !!(this.app.config as any).sequelize?.sync;
+    const syncConfig = (this.app.config as any).sequelize?.sync;
+    const shouldSync = this.app.config.env === 'local' && !!syncConfig;
     if (shouldSync && !__modelsSyncedFlag) {
+      // 解析 sync 选项，支持 alter: true 以变更已有表结构
+      const syncOptions = typeof syncConfig === 'object' ? syncConfig : {};
       // 先同步用户表，再同步依赖其外键的货物表，避免外键约束报错
-      if (UserModel?.sync) await UserModel.sync();
-      if (GoodsModel?.sync) await GoodsModel.sync();
+      if (UserModel?.sync) await UserModel.sync(syncOptions);
+      if (GoodsModel?.sync) await GoodsModel.sync(syncOptions);
       __modelsSyncedFlag = true;
     }
     return { GoodsModel, UserModel } as const;
@@ -72,6 +75,7 @@ export default class GoodsService extends Service {
     }
     if (keyword) {
       where[Op.or] = [
+        { name: { [Op.like]: `%${keyword}%` } },
         { receiverName: { [Op.like]: `%${keyword}%` } },
         { senderName: { [Op.like]: `%${keyword}%` } },
         { remark: { [Op.like]: `%${keyword}%` } },
@@ -147,5 +151,18 @@ export default class GoodsService extends Service {
       ctx.throw(404, '货物不存在或无权操作');
     }
     return await goods.update({ status });
+  }
+
+  // 追加图片到货物（仅限创建者）
+  async addGoodsImages(id: number, urls: string[], userId: number) {
+    const { ctx } = this;
+    const { GoodsModel } = await this.loadModels();
+    const goods = await GoodsModel.findOne({ where: { id, createdBy: userId } });
+    if (!goods) ctx.throw(404, '货物不存在或无权操作');
+    const current = Array.isArray((goods as any).images) ? (goods as any).images : [];
+    // 合并去重
+    const next = Array.from(new Set([...current, ...urls].filter(Boolean)));
+    await goods.update({ images: next });
+    return goods;
   }
 }

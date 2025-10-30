@@ -32,8 +32,24 @@ export default class UploadController extends Controller {
         ctx.throw(400, '图片大小不能超过 5MB');
       }
 
+      // 计算用户ID（未登录则归档到 anonymous）并按日期(YYYY-MM-DD)/用户ID分目录存储
+      const userId = (ctx.state && ctx.state.user && ctx.state.user.userId) || 'anonymous';
       // 存储文件（本地示例：copyFile 更稳健）
-      const result = await this.uploadToCloudStorage(file as any);
+      const result = await this.uploadToCloudStorage(file as any, String(userId));
+
+      // 可选：绑定到货物（若请求中带 goodsId）
+      const goodsIdRaw = (ctx.request.body && ctx.request.body.goodsId) || (ctx.query && ctx.query.goodsId);
+      if (goodsIdRaw) {
+        const goodsId = Number(goodsIdRaw);
+        if (Number.isFinite(goodsId) && goodsId > 0 && ctx.state?.user?.userId) {
+          try {
+            await ctx.service.goodsService.addGoodsImages(goodsId, [result.url], ctx.state.user.userId);
+          } catch (e: any) {
+            // 不影响上传主流程，失败仅记录日志
+            ctx.logger.warn('绑定货物图片失败 goodsId=%s error=%s', goodsId, (e && e.message) || e);
+          }
+        }
+      }
 
       ctx.body = {
         code: 200,
@@ -59,9 +75,17 @@ export default class UploadController extends Controller {
   /**
    * 上传到云存储（示例方法，需要根据实际云存储实现）
    */
-  private async uploadToCloudStorage(file: any) {
-    // 本地存储（仅用于开发环境示例）
-    const uploadDir = path.join(process.cwd(), 'app/public/uploads');
+  private async uploadToCloudStorage(file: any, userId: string) {
+    // 本地存储（仅用于开发环境示例）- 分目录：uploads/YYYY-MM-DD/{userId}/
+    const safeUserId = String(userId).replace(/[^a-zA-Z0-9_-]/g, '_');
+    const now = new Date();
+    const yyyy = String(now.getFullYear());
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+
+    const dateDir = `${yyyy}-${mm}-${dd}`;
+    const subDir = path.join('uploads', dateDir, safeUserId);
+    const uploadDir = path.join(process.cwd(), 'app/public', subDir);
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
@@ -74,7 +98,9 @@ export default class UploadController extends Controller {
     // 直接拷贝临时文件到目标路径，避免流事件的不确定性
     await fs.promises.copyFile(file.filepath, targetPath);
 
-    return { url: `/public/uploads/${filename}`, filename };
+    // 统一使用以 /public 为前缀的对外可访问 URL
+    const urlPath = `/public/${subDir.replace(/\\/g, '/')}/${filename}`;
+    return { url: urlPath, filename };
   }
 
   /**
@@ -89,13 +115,25 @@ export default class UploadController extends Controller {
       const allowedExts = new Set(['.jpg', '.jpeg', '.png', '.gif']);
       const maxSize = 5 * 1024 * 1024;
 
+      const userId = (ctx.state && ctx.state.user && ctx.state.user.userId) || 'anonymous';
+      const goodsIdRaw = (ctx.request.body && ctx.request.body.goodsId) || (ctx.query && ctx.query.goodsId);
+      const goodsId = goodsIdRaw ? Number(goodsIdRaw) : undefined;
       const tasks = (files as any[]).map(async (file: any) => {
         const mime: string = (file as any).mime || '';
         const ext = path.extname((file as any).filename || '').toLowerCase();
         const size = (file as any).size ?? fs.statSync((file as any).filepath).size;
         if (!(allowedMimes.has(mime) || allowedExts.has(ext))) return null;
         if (size > maxSize) return null;
-        return await this.uploadToCloudStorage(file as any);
+        const res = await this.uploadToCloudStorage(file as any, String(userId));
+        // 批量情况下也尝试绑定
+        if (goodsId && Number.isFinite(goodsId) && goodsId > 0 && ctx.state?.user?.userId) {
+          try {
+            await ctx.service.goodsService.addGoodsImages(goodsId, [res.url], ctx.state.user.userId);
+          } catch (e: any) {
+            ctx.logger.warn('批量绑定货物图片失败 goodsId=%s error=%s', goodsId, (e && e.message) || e);
+          }
+        }
+        return res;
       });
 
       const raw = await Promise.all(tasks);

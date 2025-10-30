@@ -11,12 +11,14 @@ export const GoodsStatus = {
 // Goods 模型属性接口
 export interface GoodsAttributes {
   id?: number;
+  name?: string;
   receiverName: string;
   receiverPhone: string;
   senderName: string;
   senderPhone: string;
   volume: number;
   weight: number;
+  freight?: number;
   status: IGoodsStatus;
   remark?: string;
   images?: string[];
@@ -28,12 +30,14 @@ export interface GoodsAttributes {
 // Goods 模型实例接口
 export interface GoodsInstance {
   id: number;
+  name?: string;
   receiverName: string;
   receiverPhone: string;
   senderName: string;
   senderPhone: string;
   volume: number;
   weight: number;
+  freight?: number;
   status: IGoodsStatus;
   remark?: string;
   images?: string[];
