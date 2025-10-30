@@ -127,6 +127,7 @@ const main = async () => {
     // user create goods
     const createBody = {
       name: '测试货物',
+      waybillNo: 'SF1234567890',
       receiverName: '张三',
       receiverPhone: '13800138000',
       senderName: '李四',
@@ -145,7 +146,7 @@ const main = async () => {
     results.detail = await jsonReq(base, 'GET', `/api/goods/${goodsId}`, null, userToken);
     // quick check for new fields
     const d = results.detail?.data?.data || {};
-    results.detail._fields = { name: d.name, freight: d.freight };
+    results.detail._fields = { name: d.name, waybillNo: d.waybillNo, freight: d.freight };
 
     // user update
     results.update = await jsonReq(base, 'PUT', `/api/goods/${goodsId}`, { remark: '已更新' }, userToken);

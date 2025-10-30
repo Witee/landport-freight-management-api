@@ -6,6 +6,7 @@ export default class GoodsController extends Controller {
     const { ctx } = this;
     ctx.validate({
       name: { type: 'string', required: false, allowEmpty: true, max: 128 },
+      waybillNo: { type: 'string', required: false, allowEmpty: true, max: 64 },
       receiverName: { type: 'string', required: true, min: 1, max: 64 },
       receiverPhone: { type: 'string', required: true, format: /^1[3-9]\d{9}$/ },
       senderName: { type: 'string', required: true, min: 1, max: 64 },
@@ -31,6 +32,7 @@ export default class GoodsController extends Controller {
     const { ctx } = this;
     ctx.validate({
       name: { type: 'string', required: false, allowEmpty: true, max: 128 },
+      waybillNo: { type: 'string', required: false, allowEmpty: true, max: 64 },
       receiverName: { type: 'string', required: false, min: 1, max: 64 },
       receiverPhone: { type: 'string', required: false, format: /^1[3-9]\d{9}$/ },
       senderName: { type: 'string', required: false, min: 1, max: 64 },

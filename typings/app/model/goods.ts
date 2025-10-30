@@ -12,6 +12,7 @@ export const GoodsStatus = {
 export interface GoodsAttributes {
   id?: number;
   name?: string;
+  waybillNo?: string;
   receiverName: string;
   receiverPhone: string;
   senderName: string;
@@ -31,6 +32,7 @@ export interface GoodsAttributes {
 export interface GoodsInstance {
   id: number;
   name?: string;
+  waybillNo?: string;
   receiverName: string;
   receiverPhone: string;
   senderName: string;

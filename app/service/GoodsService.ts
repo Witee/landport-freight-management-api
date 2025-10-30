@@ -76,6 +76,7 @@ export default class GoodsService extends Service {
     if (keyword) {
       where[Op.or] = [
         { name: { [Op.like]: `%${keyword}%` } },
+        { waybillNo: { [Op.like]: `%${keyword}%` } },
         { receiverName: { [Op.like]: `%${keyword}%` } },
         { senderName: { [Op.like]: `%${keyword}%` } },
         { remark: { [Op.like]: `%${keyword}%` } },

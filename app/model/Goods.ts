@@ -13,6 +13,11 @@ export default (app) => {
         allowNull: true,
         comment: '货物名称',
       },
+      waybillNo: {
+        type: STRING(64),
+        allowNull: true,
+        comment: '运单号码',
+      },
       receiverName: {
         type: STRING(64),
         allowNull: true,
