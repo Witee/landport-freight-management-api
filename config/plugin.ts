@@ -21,10 +21,6 @@ const plugin: EggPlugin = {
     enable: true,
     package: 'egg-cors',
   },
-  tracer: {
-    enable: true,
-    package: '@eggjs/tracer',
-  },
 };
 
 export default plugin;
