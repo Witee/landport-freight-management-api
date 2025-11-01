@@ -32,7 +32,7 @@ export default class GoodsService extends Service {
   async createGoods(goodsData, userId) {
     const { GoodsModel } = await this.loadModels();
     // 仅当传入的 status 合法时才使用，否则交由数据库默认值（pending）
-    const allowed = new Set(['pending', 'collected', 'transporting', 'delivered', 'cancelled']);
+    const allowed = new Set(['pending', 'collected', 'transporting', 'delivered', 'cancelled', 'exception']);
     const { status, ...rest } = goodsData || {};
     const payload: any = { ...rest, createdBy: userId };
     if (typeof status === 'string' && allowed.has(status)) {
@@ -159,7 +159,7 @@ export default class GoodsService extends Service {
     if (!goods) {
       ctx.throw(404, '货物不存在或无权操作');
     }
-    const allowed = new Set(['pending', 'collected', 'transporting', 'delivered', 'cancelled']);
+    const allowed = new Set(['pending', 'collected', 'transporting', 'delivered', 'cancelled', 'exception']);
     if (!allowed.has(status)) {
       ctx.throw(422, '状态值非法');
     }
@@ -177,5 +177,80 @@ export default class GoodsService extends Service {
     const next = Array.from(new Set([...current, ...urls].filter(Boolean)));
     await goods.update({ images: next });
     return goods;
+  }
+
+  async getGoodsStats(userId: number | undefined) {
+    const { GoodsModel } = await this.loadModels();
+    const baseWhere = userId ? { createdBy: userId } : {};
+    const now = new Date();
+
+    const currentYearStart = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
+    const nextYearStart = new Date(now.getFullYear() + 1, 0, 1, 0, 0, 0, 0);
+    const lastYearStart = new Date(now.getFullYear() - 1, 0, 1, 0, 0, 0, 0);
+
+    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+    const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1, 0, 0, 0, 0);
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
+
+    const rangeWhere = (start: Date, end: Date) => ({
+      ...baseWhere,
+      createdAt: {
+        [Op.gte]: start,
+        [Op.lt]: end,
+      },
+    });
+
+    const sequelize = GoodsModel.sequelize;
+    if (!sequelize) {
+      throw new Error('Sequelize instance not available');
+    }
+    const sumFreight = async (where) => {
+      const result = await GoodsModel.findOne({
+        where,
+        attributes: [[sequelize.fn('COALESCE', sequelize.fn('SUM', sequelize.col('freight')), 0), 'totalFreight']],
+        raw: true,
+      });
+      const rawTotal = (result as any)?.totalFreight;
+      if (rawTotal === null || rawTotal === undefined) return 0;
+      const numeric = Number(rawTotal);
+      if (Number.isNaN(numeric)) return 0;
+      return Math.round(numeric);
+    };
+
+    const transportingWhere = { ...baseWhere, status: 'transporting' };
+
+    const [
+      lastYearGoodsCount,
+      currentYearGoodsCount,
+      lastMonthGoodsCount,
+      currentMonthGoodsCount,
+      lastYearFreightTotal,
+      currentYearFreightTotal,
+      lastMonthFreightTotal,
+      currentMonthFreightTotal,
+      transportingGoodsCount,
+    ] = await Promise.all([
+      GoodsModel.count({ where: rangeWhere(lastYearStart, currentYearStart) }),
+      GoodsModel.count({ where: rangeWhere(currentYearStart, nextYearStart) }),
+      GoodsModel.count({ where: rangeWhere(lastMonthStart, currentMonthStart) }),
+      GoodsModel.count({ where: rangeWhere(currentMonthStart, nextMonthStart) }),
+      sumFreight(rangeWhere(lastYearStart, currentYearStart)),
+      sumFreight(rangeWhere(currentYearStart, nextYearStart)),
+      sumFreight(rangeWhere(lastMonthStart, currentMonthStart)),
+      sumFreight(rangeWhere(currentMonthStart, nextMonthStart)),
+      GoodsModel.count({ where: transportingWhere }),
+    ]);
+
+    return {
+      lastYearGoodsCount,
+      currentYearGoodsCount,
+      lastMonthGoodsCount,
+      currentMonthGoodsCount,
+      lastYearFreightTotal,
+      currentYearFreightTotal,
+      lastMonthFreightTotal,
+      currentMonthFreightTotal,
+      transportingGoodsCount,
+    };
   }
 }

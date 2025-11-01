@@ -11,9 +11,11 @@ export default (app) => {
   // 货物相关
   router.get('/api/goods/list', controller.goods.list);
   router.get('/api/goods/list-all', controller.goods.listAll);
+  router.get('/api/goods/stats', controller.goods.stats);
   router.get('/api/goods/:id', controller.goods.detail);
   router.post('/api/goods', controller.goods.create);
   router.put('/api/goods/:id', controller.goods.update);
+  router.put('/api/goods/:id/status', controller.goods.updateStatus);
   router.patch('/api/goods/:id/status', controller.goods.updateStatus);
   router.delete('/api/goods/:id', controller.goods.delete);
 };

@@ -19,7 +19,7 @@ export default class GoodsController extends Controller {
       status: {
         type: 'enum',
         required: false,
-        values: ['pending', 'collected', 'transporting', 'delivered', 'cancelled'],
+        values: ['pending', 'collected', 'transporting', 'delivered', 'cancelled', 'exception'],
       },
     });
     const goodsData = ctx.request.body;
@@ -50,7 +50,7 @@ export default class GoodsController extends Controller {
       status: {
         type: 'enum',
         required: false,
-        values: ['pending', 'collected', 'transporting', 'delivered', 'cancelled'],
+        values: ['pending', 'collected', 'transporting', 'delivered', 'cancelled', 'exception'],
       },
     });
     const id = ctx.params && ctx.params.id;
@@ -132,6 +132,18 @@ export default class GoodsController extends Controller {
     };
   }
 
+  // 统计数据
+  async stats() {
+    const { ctx } = this;
+    const userId = ctx.state.user.userId;
+    const data = await ctx.service.goodsService.getGoodsStats(userId);
+    ctx.body = {
+      code: 200,
+      message: '获取成功',
+      data,
+    };
+  }
+
   // 获取货物详情
   async detail() {
     const { ctx } = this;
@@ -154,7 +166,7 @@ export default class GoodsController extends Controller {
       status: {
         type: 'enum',
         required: true,
-        values: ['pending', 'collected', 'transporting', 'delivered', 'cancelled'],
+        values: ['pending', 'collected', 'transporting', 'delivered', 'cancelled', 'exception'],
       },
     });
     const id = ctx.params && ctx.params.id;
