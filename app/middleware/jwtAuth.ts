@@ -7,15 +7,20 @@ export default (_options, app) => {
         try {
           const payload = app.jwt.verify(token, app.config.jwt.secret);
           ctx.state.user = payload || {};
-        } catch (e) {
-          // token 无效则置空，但不中断请求，具体路由自行鉴权
+          ctx.state.tokenError = undefined;
+        } catch (err) {
+          // token 无效或过期，记录错误类型，置空用户，交由后续中间件决定是否拦截
           ctx.state.user = {};
+          const tokenErrName = (err as any)?.name;
+          ctx.state.tokenError = tokenErrName || 'InvalidToken';
         }
       } else {
         ctx.state.user = {};
+        ctx.state.tokenError = 'NoToken';
       }
-    } catch (e) {
+    } catch (err) {
       ctx.state.user = {};
+      ctx.state.tokenError = 'ParseError';
     }
     await next();
   };

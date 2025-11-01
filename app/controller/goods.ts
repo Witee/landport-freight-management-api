@@ -7,15 +7,20 @@ export default class GoodsController extends Controller {
     ctx.validate({
       name: { type: 'string', required: false, allowEmpty: true, max: 128 },
       waybillNo: { type: 'string', required: false, allowEmpty: true, max: 64 },
-      receiverName: { type: 'string', required: true, min: 1, max: 64 },
-      receiverPhone: { type: 'string', required: true, format: /^1[3-9]\d{9}$/ },
-      senderName: { type: 'string', required: true, min: 1, max: 64 },
-      senderPhone: { type: 'string', required: true, format: /^1[3-9]\d{9}$/ },
-      volume: { type: 'number', required: true, min: 0 },
-      weight: { type: 'number', required: true, min: 0 },
+      receiverName: { type: 'string', required: false, min: 1, max: 64 },
+      receiverPhone: { type: 'string', required: false, allowEmpty: true },
+      senderName: { type: 'string', required: false, min: 1, max: 64 },
+      senderPhone: { type: 'string', required: false, allowEmpty: true },
+      volume: { type: 'number', required: false, min: 0 },
+      weight: { type: 'number', required: false, min: 0 },
       freight: { type: 'number', required: false, min: 0 },
       remark: { type: 'string', required: false, allowEmpty: true },
       images: { type: 'array', required: false },
+      status: {
+        type: 'enum',
+        required: false,
+        values: ['pending', 'collected', 'transporting', 'delivered', 'cancelled'],
+      },
     });
     const goodsData = ctx.request.body;
     const userId = ctx.state.user.userId;
@@ -34,15 +39,19 @@ export default class GoodsController extends Controller {
       name: { type: 'string', required: false, allowEmpty: true, max: 128 },
       waybillNo: { type: 'string', required: false, allowEmpty: true, max: 64 },
       receiverName: { type: 'string', required: false, min: 1, max: 64 },
-      receiverPhone: { type: 'string', required: false, format: /^1[3-9]\d{9}$/ },
+      receiverPhone: { type: 'string', required: false, allowEmpty: true },
       senderName: { type: 'string', required: false, min: 1, max: 64 },
-      senderPhone: { type: 'string', required: false, format: /^1[3-9]\d{9}$/ },
+      senderPhone: { type: 'string', required: false, allowEmpty: true },
       volume: { type: 'number', required: false, min: 0 },
       weight: { type: 'number', required: false, min: 0 },
       freight: { type: 'number', required: false, min: 0 },
       remark: { type: 'string', required: false, allowEmpty: true },
       images: { type: 'array', required: false },
-      status: { type: 'string', required: false },
+      status: {
+        type: 'enum',
+        required: false,
+        values: ['pending', 'collected', 'transporting', 'delivered', 'cancelled'],
+      },
     });
     const id = ctx.params && ctx.params.id;
     const goodsData = ctx.request.body;
@@ -142,7 +151,11 @@ export default class GoodsController extends Controller {
   async updateStatus() {
     const { ctx } = this;
     ctx.validate({
-      status: { type: 'string', required: true },
+      status: {
+        type: 'enum',
+        required: true,
+        values: ['pending', 'collected', 'transporting', 'delivered', 'cancelled'],
+      },
     });
     const id = ctx.params && ctx.params.id;
     const status = ctx.request.body.status;
@@ -151,7 +164,7 @@ export default class GoodsController extends Controller {
     ctx.body = {
       code: 200,
       message: '状态更新成功',
-      data: goods,
+      data: goods && typeof goods.toJSON === 'function' ? goods.toJSON() : goods,
     };
   }
 }

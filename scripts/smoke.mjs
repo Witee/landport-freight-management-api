@@ -31,7 +31,9 @@ async function ensureServer() {
   if (ok) return { base, proc: null };
 
   // try to start dev server
-  const proc = spawn('npm', ['run', 'dev'], { stdio: 'ignore', env: process.env });
+  // 确保启动被测服务时开启 mock（仅对新启动的进程生效；若已有服务在跑，请先停止再跑 smoke）
+  const env = { ...process.env, WX_USE_MOCK: process.env.WX_USE_MOCK || '1' };
+  const proc = spawn('npm', ['run', 'dev'], { stdio: 'ignore', env });
   // wait until ready
   ok = await waitForServer(base, 25000);
   if (!ok) {
@@ -104,8 +106,9 @@ const main = async () => {
   try {
     // login admin
     const loginAdmin = await jsonReq(base, 'POST', '/api/auth/wx-login', {
-      openid: 'admin-1',
+      token: 'admin-1',
       nickname: 'Admin',
+      phone: '13900139000',
       role: 'admin',
     });
     if (loginAdmin.status !== 200) throw new Error('login admin failed ' + JSON.stringify(loginAdmin));
@@ -113,8 +116,9 @@ const main = async () => {
 
     // login user
     const loginUser = await jsonReq(base, 'POST', '/api/auth/wx-login', {
-      openid: 'user-1',
+      token: 'user-1',
       nickname: 'User',
+      phone: '13800138000',
       role: 'user',
     });
     if (loginUser.status !== 200) throw new Error('login user failed ' + JSON.stringify(loginUser));

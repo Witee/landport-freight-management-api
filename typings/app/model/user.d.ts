@@ -8,6 +8,7 @@ export interface UserAttributes {
   openid: string;
   nickname: string;
   avatar?: string;
+  phone?: string;
   role: UserRole;
   lastLoginAt?: Date;
   createdAt?: Date;

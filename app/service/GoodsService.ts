@@ -31,11 +31,14 @@ export default class GoodsService extends Service {
   // 创建货物
   async createGoods(goodsData, userId) {
     const { GoodsModel } = await this.loadModels();
-    return await GoodsModel.create({
-      ...goodsData,
-      status: 'pending',
-      createdBy: userId,
-    });
+    // 仅当传入的 status 合法时才使用，否则交由数据库默认值（pending）
+    const allowed = new Set(['pending', 'collected', 'transporting', 'delivered', 'cancelled']);
+    const { status, ...rest } = goodsData || {};
+    const payload: any = { ...rest, createdBy: userId };
+    if (typeof status === 'string' && allowed.has(status)) {
+      payload.status = status;
+    }
+    return await GoodsModel.create(payload);
   }
 
   // 更新货物
@@ -69,6 +72,9 @@ export default class GoodsService extends Service {
   // 获取货物列表
   async getGoodsList(query, userId?) {
     const { page = 1, pageSize = 10, keyword, status, receiverName, senderName } = query;
+    // 强制转换分页参数为数字，避免 SQL 语法错误
+    const pageNum = Number(page) || 1;
+    const pageSizeNum = Number(pageSize) || 10;
     let where: any = Object.create(null);
     if (userId) {
       where.createdBy = userId;
@@ -96,8 +102,8 @@ export default class GoodsService extends Service {
     const { GoodsModel, UserModel } = await this.loadModels();
     const { count, rows } = await GoodsModel.findAndCountAll({
       where,
-      limit: pageSize,
-      offset: (page - 1) * pageSize,
+      limit: pageSizeNum,
+      offset: (pageNum - 1) * pageSizeNum,
       order: [['createdAt', 'DESC']],
       include: UserModel
         ? [
@@ -112,10 +118,10 @@ export default class GoodsService extends Service {
     return {
       list: rows,
       pagination: {
-        page,
-        pageSize,
+        page: pageNum,
+        pageSize: pageSizeNum,
         total: count,
-        totalPages: Math.ceil(count / pageSize),
+        totalPages: Math.ceil(count / pageSizeNum),
       },
     };
   }
@@ -152,6 +158,10 @@ export default class GoodsService extends Service {
     });
     if (!goods) {
       ctx.throw(404, '货物不存在或无权操作');
+    }
+    const allowed = new Set(['pending', 'collected', 'transporting', 'delivered', 'cancelled']);
+    if (!allowed.has(status)) {
+      ctx.throw(422, '状态值非法');
     }
     return await goods.update({ status });
   }

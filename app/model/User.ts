@@ -24,6 +24,11 @@ export default (app) => {
         allowNull: true,
         comment: '头像URL',
       },
+      phone: {
+        type: STRING(20),
+        allowNull: true,
+        comment: '手机号',
+      },
       role: {
         type: ENUM('admin', 'user'),
         defaultValue: 'user',

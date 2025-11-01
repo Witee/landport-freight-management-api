@@ -56,7 +56,7 @@ export default (app) => {
       status: {
         type: ENUM('pending', 'collected', 'transporting', 'delivered', 'cancelled'),
         defaultValue: 'pending',
-        comment: '货物状态',
+        comment: '运输状态',
       },
       remark: {
         type: TEXT,

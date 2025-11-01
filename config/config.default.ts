@@ -3,7 +3,7 @@ import path from 'path';
 export default (appInfo) => {
   const config = {
     keys: appInfo.name + '_{{keys}}',
-    middleware: ['errorHandler', 'jwtAuth'],
+    middleware: ['errorHandler', 'jwtAuth', 'requireAuth'],
     multipart: {
       mode: 'file',
     },
@@ -53,6 +53,14 @@ export default (appInfo) => {
     cors: {
       origin: '*',
       allowMethods: 'GET,HEAD,PUT,POST,DELETE,PATCH',
+    },
+    wechat: {
+      appID: 'wx13d3787702b7906c',
+      appSecret: '0a98a6c6874e2f99736545a3542cb03e',
+      // 是否在本地使用 mock（dev_ 前缀），默认关闭；可通过环境变量 WX_USE_MOCK=1 开启
+      useMock:
+        String(process.env.WX_USE_MOCK).toLowerCase() === '1' ||
+        String(process.env.WX_USE_MOCK).toLowerCase() === 'true',
     },
   };
   return { ...config, ...userConfig };
