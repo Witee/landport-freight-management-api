@@ -43,6 +43,10 @@ export default (app) => {
     {
       tableName: 'users',
       modelName: 'User',
+      underscored: false,
+      timestamps: true,
+      createdAt: 'createdAt',
+      updatedAt: 'updatedAt',
     }
   );
   return User;
