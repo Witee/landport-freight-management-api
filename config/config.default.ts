@@ -1,8 +1,9 @@
 import path from 'path';
 
 export default (appInfo) => {
+  const keysFromEnv = process.env.APP_KEYS && String(process.env.APP_KEYS).trim();
   const config = {
-    keys: appInfo.name + '_{{keys}}',
+    keys: keysFromEnv || `${appInfo.name}_QsVn1B7y4z`,
     middleware: ['errorHandler', 'jwtAuth', 'requireAuth'],
     multipart: {
       mode: 'file',
