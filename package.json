@@ -8,6 +8,7 @@
   },
   "scripts": {
     "start": "cross-env UPLOAD_PUBLIC_DIR=/public eggctl start --daemon --title=landport-freight-management-api",
+    "docker": "cross-env UPLOAD_PUBLIC_DIR=/public eggctl start --title=landport-freight-management-api",
     "stop": "eggctl stop --title=landport-freight-management-api",
     "dev": "egg-bin dev",
     "smoke": "node scripts/smoke.mjs",
