@@ -18,7 +18,7 @@
       "@config/*": ["config/*"]
     }
   },
-  "include": ["app/**/*", "config/**/*", "typings/**/*"],
+  "include": ["app.ts", "app/**/*", "config/**/*", "typings/**/*"],
   "exclude": ["app/public", "app/views", "node_modules", "dist", "logs"],
   "ts-node": {
     "esm": true,
