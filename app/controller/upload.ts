@@ -85,7 +85,12 @@ export default class UploadController extends Controller {
 
     const dateDir = `${yyyy}-${mm}-${dd}`;
     const subDir = path.join('uploads', dateDir, safeUserId);
-    const uploadDir = path.join(process.cwd(), 'app/public', subDir);
+    // 支持通过环境变量配置线上统一的 public 目录（优先）
+    // 若未设置，则沿用之前的逻辑：production 使用 /web/dachengguoji/public，其它环境使用项目内 app/public
+    const appCfg: any = (this.app && (this.app.config as any)) || {};
+    const resolvedPublicRoot =
+      (appCfg.uploadPublicDir && String(appCfg.uploadPublicDir).trim()) || path.join(process.cwd(), 'app/public');
+    const uploadDir = path.join(resolvedPublicRoot, subDir);
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }

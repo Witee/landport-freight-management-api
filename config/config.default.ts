@@ -62,6 +62,11 @@ export default (appInfo) => {
         String(process.env.WX_USE_MOCK).toLowerCase() === '1' ||
         String(process.env.WX_USE_MOCK).toLowerCase() === 'true',
     },
+    // 可配置的 public 根目录（上传文件写入位置），默认指向项目内 app/public。
+    // 若设置环境变量 UPLOAD_PUBLIC_DIR，则以其为准（可在 config.*.ts 中继续覆写）。
+    uploadPublicDir:
+      (process.env.UPLOAD_PUBLIC_DIR && process.env.UPLOAD_PUBLIC_DIR.trim()) ||
+      path.join(appInfo.baseDir, 'app/public'),
   };
   return { ...config, ...userConfig };
 };

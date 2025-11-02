@@ -7,7 +7,7 @@
     "typescript": true
   },
   "scripts": {
-    "start": "eggctl start --daemon --title=landport-freight-management-api",
+    "start": "cross-env UPLOAD_PUBLIC_DIR=/web/dachengguoji/public eggctl start --daemon --title=landport-freight-management-api",
     "stop": "eggctl stop --title=landport-freight-management-api",
     "dev": "egg-bin dev",
     "smoke": "node scripts/smoke.mjs",
