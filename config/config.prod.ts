@@ -5,7 +5,7 @@ const parsePort = (value: string | undefined, fallback: number) => {
 };
 
 const MYSQL_HOST = process.env.MYSQL_HOST?.trim() || '127.0.0.1';
-const MYSQL_PORT = parsePort(process.env.MYSQL_PORT, 3306);
+const MYSQL_PORT = parsePort(process.env.MYSQL_PORT, 13306);
 const MYSQL_DB = process.env.MYSQL_DB?.trim() || 'landport';
 const MYSQL_USER = process.env.MYSQL_USER?.trim() || 'root';
 const MYSQL_PASSWORD = process.env.MYSQL_PASSWORD ?? '';
