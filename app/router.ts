@@ -12,6 +12,7 @@ export default (app) => {
   router.get('/api/goods/list', controller.goods.list);
   router.get('/api/goods/list-all', controller.goods.listAll);
   router.get('/api/goods/stats', controller.goods.stats);
+  router.get('/api/goods/reconciliation', controller.goods.reconciliation);
   router.get('/api/goods/:id', controller.goods.detail);
   router.post('/api/goods', controller.goods.create);
   router.put('/api/goods/:id', controller.goods.update);

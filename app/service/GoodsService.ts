@@ -253,4 +253,81 @@ export default class GoodsService extends Service {
       transportingGoodsCount,
     };
   }
+
+  async getGoodsReconciliation(userId: number | undefined) {
+    const { GoodsModel } = await this.loadModels();
+    const baseWhere = userId ? { createdBy: userId } : {};
+    const now = new Date();
+
+    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+    const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1, 0, 0, 0, 0);
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
+
+    const parseNumber = (value: unknown) => {
+      const num = Number(value);
+      return Number.isFinite(num) ? num : 0;
+    };
+
+    const monthLabel = (date: Date) => `${date.getMonth() + 1}月`;
+
+    const makePeriod = async (baseTitle: string, start: Date, end: Date) => {
+      const where = {
+        ...baseWhere,
+        createdAt: {
+          [Op.gte]: start,
+          [Op.lt]: end,
+        },
+      };
+
+      const rows = await GoodsModel.findAll({
+        where,
+        attributes: ['id', 'name', 'weight', 'volume', 'freight', 'waybillNo', 'status'],
+        order: [['createdAt', 'DESC']],
+        raw: true,
+      });
+
+      const records = rows.map((item: any) => ({
+        id: item.id,
+        goodsId: item.id,
+        goodsName: item.name,
+        name: item.name,
+        weight: parseNumber(item.weight),
+        volume: parseNumber(item.volume),
+        freight: parseNumber(item.freight),
+        waybillNo: item.waybillNo,
+        status: item.status,
+      }));
+
+      const goodsTotal = records.length;
+      const totalAmount = Number(records.reduce((sum, record) => sum + record.freight, 0).toFixed(2));
+
+      return {
+        title: `${baseTitle}[${monthLabel(start)}]`,
+        goodsTotal,
+        goodsCount: goodsTotal,
+        totalAmount,
+        amountTotal: totalAmount,
+        records,
+      };
+    };
+
+    const [currentMonth, lastMonth] = await Promise.all([
+      makePeriod('本月账单', currentMonthStart, nextMonthStart),
+      makePeriod('上月账单', lastMonthStart, currentMonthStart),
+    ]);
+
+    const totalAmount = Number((currentMonth.totalAmount + lastMonth.totalAmount).toFixed(2));
+    const totalGoods = currentMonth.goodsTotal + lastMonth.goodsTotal;
+
+    const summary = {
+      totalAmount,
+      totalGoods,
+    };
+
+    return {
+      summary,
+      currentMonth,
+      lastMonth,
+    };
+  }
 }

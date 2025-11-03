@@ -144,6 +144,18 @@ export default class GoodsController extends Controller {
     };
   }
 
+  // 对账信息
+  async reconciliation() {
+    const { ctx } = this;
+    const userId = ctx.state.user.userId;
+    const data = await ctx.service.goodsService.getGoodsReconciliation(userId);
+    ctx.body = {
+      code: 200,
+      message: '获取成功',
+      data,
+    };
+  }
+
   // 获取货物详情
   async detail() {
     const { ctx } = this;
