@@ -25,8 +25,8 @@ export default class UploadController extends Controller {
         ctx.throw(400, '只支持 jpg、png、gif 格式的图片');
       }
 
-      // 验证文件大小 (最大 5MB)，优先使用 file.size，没有则使用 stat
-      const maxSize = 5 * 1024 * 1024;
+      // 验证文件大小 (最大 20MB)，优先使用 file.size，没有则使用 stat
+      const maxSize = 20 * 1024 * 1024;
       const fileSize: number = (file as any).size ?? fs.statSync((file as any).filepath).size;
       if (fileSize > maxSize) {
         ctx.throw(400, '图片大小不能超过 5MB');
@@ -118,7 +118,7 @@ export default class UploadController extends Controller {
       const files = (ctx.request.files || []) as any[];
       const allowedMimes = new Set(['image/jpeg', 'image/png', 'image/gif']);
       const allowedExts = new Set(['.jpg', '.jpeg', '.png', '.gif']);
-      const maxSize = 5 * 1024 * 1024;
+      const maxSize = 20 * 1024 * 1024;
 
       const userId = (ctx.state && ctx.state.user && ctx.state.user.userId) || 'anonymous';
       const goodsIdRaw = (ctx.request.body && ctx.request.body.goodsId) || (ctx.query && ctx.query.goodsId);

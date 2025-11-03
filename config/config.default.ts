@@ -30,7 +30,7 @@ export default (appInfo) => {
     },
     multipart: {
       mode: 'file',
-      fileSize: '10mb',
+      fileSize: '20mb',
       fileExtensions: ['.jpg', '.jpeg', '.png', '.gif'],
     },
     static: {
