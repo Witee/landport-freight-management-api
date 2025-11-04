@@ -307,8 +307,8 @@ export default class GoodsService extends Service {
 
       const rows = await GoodsModel.findAll({
         where,
-        attributes: ['id', 'name', 'weight', 'volume', 'freight', 'waybillNo', 'status'],
-        order: [['createdAt', 'DESC']],
+        attributes: ['id', 'name', 'weight', 'volume', 'freight', 'waybillNo', 'status', 'createdAt'],
+        order: [['id', 'DESC']],
         raw: true,
       });
 
@@ -322,6 +322,7 @@ export default class GoodsService extends Service {
         freight: parseNumber(item.freight),
         waybillNo: item.waybillNo,
         status: item.status,
+        createdAt: item.createdAt,
       }));
 
       const goodsTotal = records.length;
