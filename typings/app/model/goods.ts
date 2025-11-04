@@ -1,11 +1,11 @@
-export type IGoodsStatus = 'pending' | 'collected' | 'transporting' | 'delivered' | 'cancelled';
+export type IGoodsStatus = 'collected' | 'transporting' | 'delivered' | 'cancelled' | 'exception';
 
 export const GoodsStatus = {
-  PENDING: 'pending' as const,
   COLLECTED: 'collected' as const,
   TRANSPORTING: 'transporting' as const,
   DELIVERED: 'delivered' as const,
   CANCELLED: 'cancelled' as const,
+  EXCEPTION: 'exception' as const,
 } as const;
 
 // Goods 模型属性接口

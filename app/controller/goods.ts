@@ -19,7 +19,7 @@ export default class GoodsController extends Controller {
       status: {
         type: 'enum',
         required: false,
-        values: ['pending', 'collected', 'transporting', 'delivered', 'cancelled', 'exception'],
+        values: ['collected', 'transporting', 'delivered', 'cancelled', 'exception'],
       },
     });
     const goodsData = ctx.request.body;
@@ -50,7 +50,7 @@ export default class GoodsController extends Controller {
       status: {
         type: 'enum',
         required: false,
-        values: ['pending', 'collected', 'transporting', 'delivered', 'cancelled', 'exception'],
+        values: ['collected', 'transporting', 'delivered', 'cancelled', 'exception'],
       },
     });
     const id = ctx.params && ctx.params.id;
@@ -80,15 +80,21 @@ export default class GoodsController extends Controller {
   // 获取货物列表（用户自己的）
   async list() {
     const { ctx } = this;
-    ctx.validate({
-      page: { type: 'number', required: false, min: 1 },
-      pageSize: { type: 'number', required: false, min: 1, max: 100 },
-      keyword: { type: 'string', required: false, allowEmpty: true },
-      status: { type: 'string', required: false },
-      receiverName: { type: 'string', required: false, allowEmpty: true },
-      senderName: { type: 'string', required: false, allowEmpty: true },
-    });
-    const query = ctx.query;
+    const query = { ...ctx.query } as any;
+    if (Array.isArray(query.status)) {
+      query.status = query.status.join(',');
+    }
+    (ctx.validate as any)(
+      {
+        page: { type: 'number', required: false, min: 1 },
+        pageSize: { type: 'number', required: false, min: 1, max: 100 },
+        keyword: { type: 'string', required: false, allowEmpty: true },
+        status: { type: 'string', required: false },
+        receiverName: { type: 'string', required: false, allowEmpty: true },
+        senderName: { type: 'string', required: false, allowEmpty: true },
+      },
+      query
+    );
     const userId = ctx.state.user.userId;
     const result = await ctx.service.goodsService.getGoodsList(query, userId);
     // 兜底：images 字段为 null 时转为空数组，避免前端判空麻烦
@@ -110,15 +116,21 @@ export default class GoodsController extends Controller {
   // 获取所有货物列表（管理员）
   async listAll() {
     const { ctx } = this;
-    ctx.validate({
-      page: { type: 'number', required: false, min: 1 },
-      pageSize: { type: 'number', required: false, min: 1, max: 100 },
-      keyword: { type: 'string', required: false, allowEmpty: true },
-      status: { type: 'string', required: false },
-      receiverName: { type: 'string', required: false, allowEmpty: true },
-      senderName: { type: 'string', required: false, allowEmpty: true },
-    });
-    const query = ctx.query;
+    const query = { ...ctx.query } as any;
+    if (Array.isArray(query.status)) {
+      query.status = query.status.join(',');
+    }
+    (ctx.validate as any)(
+      {
+        page: { type: 'number', required: false, min: 1 },
+        pageSize: { type: 'number', required: false, min: 1, max: 100 },
+        keyword: { type: 'string', required: false, allowEmpty: true },
+        status: { type: 'string', required: false },
+        receiverName: { type: 'string', required: false, allowEmpty: true },
+        senderName: { type: 'string', required: false, allowEmpty: true },
+      },
+      query
+    );
     // 检查管理员权限
     const hasPermission = await ctx.service.userService.checkPermission(ctx.state.user.userId, 'admin');
     if (!hasPermission) {
@@ -178,7 +190,7 @@ export default class GoodsController extends Controller {
       status: {
         type: 'enum',
         required: true,
-        values: ['pending', 'collected', 'transporting', 'delivered', 'cancelled', 'exception'],
+        values: ['collected', 'transporting', 'delivered', 'cancelled', 'exception'],
       },
     });
     const id = ctx.params && ctx.params.id;

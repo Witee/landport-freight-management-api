@@ -2,14 +2,14 @@
 import 'egg';
 import { Model, BuildOptions, CreateOptions, Sequelize } from 'sequelize';
 
-export type IGoodsStatus = 'pending' | 'collected' | 'transporting' | 'delivered' | 'cancelled';
+export type IGoodsStatus = 'collected' | 'transporting' | 'delivered' | 'cancelled' | 'exception';
 
 export const GoodsStatus: {
-  readonly PENDING: 'pending';
   readonly COLLECTED: 'collected';
   readonly TRANSPORTING: 'transporting';
   readonly DELIVERED: 'delivered';
   readonly CANCELLED: 'cancelled';
+  readonly EXCEPTION: 'exception';
 };
 
 // Goods 模型属性接口
@@ -38,7 +38,7 @@ export interface GoodsCreateOptions extends CreateOptions {
 }
 
 // Goods 模型静态方法接口
-export interface GoodsModelStatic extends Model {
+export interface GoodsModelStatic {
   new (values?: GoodsAttributes, options?: BuildOptions): GoodsInstance;
 
   // 静态方法

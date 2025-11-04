@@ -3,6 +3,28 @@ import { Op } from 'sequelize';
 import GoodsFactory from '../model/Goods.js';
 import UserFactory from '../model/User.js';
 
+const GOODS_STATUS_VALUES = ['collected', 'transporting', 'delivered', 'cancelled', 'exception'] as const;
+const GOODS_STATUS_SET = new Set<string>(GOODS_STATUS_VALUES);
+const DEFAULT_GOODS_STATUS = 'collected';
+
+const normalizeStatusFilter = (input: unknown): string[] => {
+  if (!input) return [];
+  const collected: string[] = [];
+  const collect = (value: unknown) => {
+    if (typeof value === 'string') {
+      value
+        .split(',')
+        .map((segment) => segment.trim())
+        .filter(Boolean)
+        .forEach((segment) => collected.push(segment));
+    } else if (Array.isArray(value)) {
+      value.forEach(collect);
+    }
+  };
+  collect(input);
+  return Array.from(new Set(collected.filter((value) => GOODS_STATUS_SET.has(value))));
+};
+
 // 本地进程内标记：避免重复 sync（仅用于 local 环境开发）
 let __modelsSyncedFlag = false;
 
@@ -31,12 +53,14 @@ export default class GoodsService extends Service {
   // 创建货物
   async createGoods(goodsData, userId) {
     const { GoodsModel } = await this.loadModels();
-    // 仅当传入的 status 合法时才使用，否则交由数据库默认值（pending）
-    const allowed = new Set(['pending', 'collected', 'transporting', 'delivered', 'cancelled', 'exception']);
+    // 仅当传入的 status 合法时才使用，否则采用系统默认状态
     const { status, ...rest } = goodsData || {};
     const payload: any = { ...rest, createdBy: userId };
-    if (typeof status === 'string' && allowed.has(status)) {
+    if (typeof status === 'string' && GOODS_STATUS_SET.has(status)) {
       payload.status = status;
+    }
+    if (!payload.status) {
+      payload.status = DEFAULT_GOODS_STATUS;
     }
     return await GoodsModel.create(payload);
   }
@@ -71,7 +95,7 @@ export default class GoodsService extends Service {
 
   // 获取货物列表
   async getGoodsList(query, userId?) {
-    const { page = 1, pageSize = 10, keyword, status, receiverName, senderName } = query;
+    const { page = 1, pageSize = 10, keyword, receiverName, senderName } = query;
     // 强制转换分页参数为数字，避免 SQL 语法错误
     const pageNum = Number(page) || 1;
     const pageSizeNum = Number(pageSize) || 10;
@@ -90,8 +114,11 @@ export default class GoodsService extends Service {
         { remark: { [Op.like]: `%${keyword}%` } },
       ];
     }
-    if (status) {
-      where.status = status;
+    const statusFilter = normalizeStatusFilter([(query as any)?.status, (query as any)?.statuses]);
+    if (statusFilter.length === 1) {
+      where.status = statusFilter[0];
+    } else if (statusFilter.length > 1) {
+      where.status = { [Op.in]: statusFilter };
     }
     if (receiverName) {
       where.receiverName = { [Op.like]: `%${receiverName}%` };
@@ -159,8 +186,7 @@ export default class GoodsService extends Service {
     if (!goods) {
       ctx.throw(404, '货物不存在或无权操作');
     }
-    const allowed = new Set(['pending', 'collected', 'transporting', 'delivered', 'cancelled', 'exception']);
-    if (!allowed.has(status)) {
+    if (!GOODS_STATUS_SET.has(status)) {
       ctx.throw(422, '状态值非法');
     }
     return await goods.update({ status });

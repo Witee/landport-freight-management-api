@@ -54,8 +54,8 @@ export default (app) => {
         comment: '运费(¥)',
       },
       status: {
-        type: ENUM('pending', 'collected', 'transporting', 'delivered', 'cancelled', 'exception'),
-        defaultValue: 'pending',
+        type: ENUM('collected', 'transporting', 'delivered', 'cancelled', 'exception'),
+        defaultValue: 'collected',
         comment: '运输状态',
       },
       remark: {
