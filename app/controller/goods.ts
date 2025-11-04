@@ -1,28 +1,62 @@
 import { Controller } from 'egg';
 
+const NUMERIC_FIELDS = ['volume', 'weight', 'freight'] as const;
+
+const buildValidationPayload = (data: Record<string, unknown>) => {
+  if (!data || typeof data !== 'object') return data;
+  const cloned = { ...data } as Record<string, unknown>;
+  for (const key of Object.keys(cloned)) {
+    if (cloned[key] === null) delete cloned[key];
+  }
+  for (const field of NUMERIC_FIELDS) {
+    if (cloned[field] === '') delete cloned[field];
+  }
+  return cloned;
+};
+
+const prepareGoodsPayload = (data: Record<string, unknown>) => {
+  if (!data || typeof data !== 'object') return data;
+  const cloned = { ...data } as Record<string, unknown>;
+  for (const field of NUMERIC_FIELDS) {
+    const value = cloned[field];
+    if (value === '' || value === undefined) {
+      cloned[field] = null;
+    } else if (typeof value === 'string') {
+      const num = Number(value);
+      cloned[field] = Number.isFinite(num) ? num : null;
+    }
+  }
+  return cloned;
+};
+
 export default class GoodsController extends Controller {
   // 创建货物
   async create() {
     const { ctx } = this;
-    ctx.validate({
-      name: { type: 'string', required: false, allowEmpty: true, max: 128 },
-      waybillNo: { type: 'string', required: false, allowEmpty: true, max: 64 },
-      receiverName: { type: 'string', required: false, min: 1, max: 64 },
-      receiverPhone: { type: 'string', required: false, allowEmpty: true },
-      senderName: { type: 'string', required: false, min: 1, max: 64 },
-      senderPhone: { type: 'string', required: false, allowEmpty: true },
-      volume: { type: 'number', required: false, min: 0 },
-      weight: { type: 'number', required: false, min: 0 },
-      freight: { type: 'number', required: false, min: 0 },
-      remark: { type: 'string', required: false, allowEmpty: true },
-      images: { type: 'array', required: false },
-      status: {
-        type: 'enum',
-        required: false,
-        values: ['collected', 'transporting', 'delivered', 'cancelled', 'exception'],
+    const body = ctx.request.body;
+    const validationPayload = buildValidationPayload(body);
+    (ctx.validate as any)(
+      {
+        name: { type: 'string', required: false, allowEmpty: true, max: 128 },
+        waybillNo: { type: 'string', required: false, allowEmpty: true, max: 64 },
+        receiverName: { type: 'string', required: false, min: 1, max: 64 },
+        receiverPhone: { type: 'string', required: false, allowEmpty: true },
+        senderName: { type: 'string', required: false, min: 1, max: 64 },
+        senderPhone: { type: 'string', required: false, allowEmpty: true },
+        volume: { type: 'number', required: false, min: 0 },
+        weight: { type: 'number', required: false, min: 0 },
+        freight: { type: 'number', required: false, min: 0 },
+        remark: { type: 'string', required: false, allowEmpty: true },
+        images: { type: 'array', required: false },
+        status: {
+          type: 'enum',
+          required: false,
+          values: ['collected', 'transporting', 'delivered', 'cancelled', 'exception'],
+        },
       },
-    });
-    const goodsData = ctx.request.body;
+      validationPayload
+    );
+    const goodsData = prepareGoodsPayload(body) as any;
     const userId = ctx.state.user.userId;
     const goods = await ctx.service.goodsService.createGoods(goodsData, userId);
     ctx.body = {
@@ -35,26 +69,31 @@ export default class GoodsController extends Controller {
   // 更新货物
   async update() {
     const { ctx } = this;
-    ctx.validate({
-      name: { type: 'string', required: false, allowEmpty: true, max: 128 },
-      waybillNo: { type: 'string', required: false, allowEmpty: true, max: 64 },
-      receiverName: { type: 'string', required: false, min: 1, max: 64 },
-      receiverPhone: { type: 'string', required: false, allowEmpty: true },
-      senderName: { type: 'string', required: false, min: 1, max: 64 },
-      senderPhone: { type: 'string', required: false, allowEmpty: true },
-      volume: { type: 'number', required: false, min: 0 },
-      weight: { type: 'number', required: false, min: 0 },
-      freight: { type: 'number', required: false, min: 0 },
-      remark: { type: 'string', required: false, allowEmpty: true },
-      images: { type: 'array', required: false },
-      status: {
-        type: 'enum',
-        required: false,
-        values: ['collected', 'transporting', 'delivered', 'cancelled', 'exception'],
+    const body = ctx.request.body;
+    const validationPayload = buildValidationPayload(body);
+    (ctx.validate as any)(
+      {
+        name: { type: 'string', required: false, allowEmpty: true, max: 128 },
+        waybillNo: { type: 'string', required: false, allowEmpty: true, max: 64 },
+        receiverName: { type: 'string', required: false, min: 1, max: 64 },
+        receiverPhone: { type: 'string', required: false, allowEmpty: true },
+        senderName: { type: 'string', required: false, min: 1, max: 64 },
+        senderPhone: { type: 'string', required: false, allowEmpty: true },
+        volume: { type: 'number', required: false, min: 0 },
+        weight: { type: 'number', required: false, min: 0 },
+        freight: { type: 'number', required: false, min: 0 },
+        remark: { type: 'string', required: false, allowEmpty: true },
+        images: { type: 'array', required: false },
+        status: {
+          type: 'enum',
+          required: false,
+          values: ['collected', 'transporting', 'delivered', 'cancelled', 'exception'],
+        },
       },
-    });
+      validationPayload
+    );
     const id = ctx.params && ctx.params.id;
-    const goodsData = ctx.request.body;
+    const goodsData = prepareGoodsPayload(body) as any;
     const userId = ctx.state.user.userId;
     const goods = await ctx.service.goodsService.updateGoods(Number(id), goodsData, userId);
     ctx.body = {
