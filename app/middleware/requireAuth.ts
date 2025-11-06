@@ -9,6 +9,18 @@ export default () => {
     if (path.startsWith('/api/auth/')) {
       return await next();
     }
+    // 放行后台管理认证接口
+    if (path.startsWith('/api/admin/auth/')) {
+      return await next();
+    }
+    // 放行案例管理接口（由 requireAdminAuth 处理）
+    if (path.startsWith('/api/cases')) {
+      return await next();
+    }
+    // 放行其他 admin 接口（由 requireAdminAuth 处理）
+    if (path.startsWith('/api/admin/')) {
+      return await next();
+    }
     // 仅保护 /api 下的业务接口
     if (!path.startsWith('/api/')) {
       return await next();

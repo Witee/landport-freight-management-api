@@ -4,7 +4,7 @@ export default (appInfo) => {
   const keysFromEnv = process.env.APP_KEYS && String(process.env.APP_KEYS).trim();
   const config = {
     keys: keysFromEnv || `${appInfo.name}_QsVn1B7y4z`,
-    middleware: ['errorHandler', 'jwtAuth', 'requireAuth'],
+    middleware: ['errorHandler', 'jwtAuth', 'requireAuth', 'adminAuth', 'requireAdminAuth'],
     multipart: {
       mode: 'file',
     },
@@ -40,6 +40,10 @@ export default (appInfo) => {
     jwt: {
       secret: 'G7xtJPiwG',
       expiresIn: '7d',
+    },
+    adminJwt: {
+      secret: 'AdminJwtSecret2025',
+      expiresIn: '30d',
     },
     validate: {
       convert: true,

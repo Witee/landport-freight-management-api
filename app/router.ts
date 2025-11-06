@@ -4,6 +4,9 @@ export default (app) => {
   // 认证相关
   router.post('/api/auth/wx-login', controller.auth.wxLogin);
 
+  // 后台管理认证
+  router.post('/api/admin/auth/login', controller.adminAuth.login);
+
   // 文件上传
   router.post('/api/upload/goods-image', controller.upload.uploadGoodsImage);
   router.post('/api/upload/multiple-images', controller.upload.uploadMultipleImages);
@@ -19,4 +22,11 @@ export default (app) => {
   router.put('/api/goods/:id/status', controller.goods.updateStatus);
   router.patch('/api/goods/:id/status', controller.goods.updateStatus);
   router.delete('/api/goods/:id', controller.goods.delete);
+
+  // 案例相关（需要后台认证）
+  router.get('/api/cases', controller.case.list);
+  router.get('/api/cases/:id', controller.case.detail);
+  router.post('/api/cases', controller.case.create);
+  router.put('/api/cases/:id', controller.case.update);
+  router.delete('/api/cases/:id', controller.case.delete);
 };

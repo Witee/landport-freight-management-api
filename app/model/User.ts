@@ -19,6 +19,17 @@ export default (app) => {
         allowNull: false,
         comment: '用户昵称',
       },
+      username: {
+        type: STRING(64),
+        allowNull: true,
+        unique: true,
+        comment: '后台登录用户名',
+      },
+      password: {
+        type: STRING(255),
+        allowNull: true,
+        comment: '后台登录密码（加密）',
+      },
       avatar: {
         type: STRING(255),
         allowNull: true,
