@@ -20,8 +20,9 @@ export default {
       },
     },
     // 自动同步模型到数据库，仅用于本地开发环境
+    // 注意：alter: true 可能导致索引过多错误，改为 false 只创建不存在的表，不修改已有表
     sync: {
-      alter: true,
+      alter: false,
       force: false,
     },
     define: {

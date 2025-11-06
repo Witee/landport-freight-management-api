@@ -21,3 +21,8 @@ test/**/*.map
 config/**/*.map
 .package-lock.json
 .egg/
+
+# 环境变量和 Token 文件
+.env
+.env.local
+.env.website-token

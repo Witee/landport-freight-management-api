@@ -34,7 +34,7 @@ export default (appInfo) => {
       fileExtensions: ['.jpg', '.jpeg', '.png', '.gif'],
     },
     static: {
-      prefix: '/public',
+      prefix: '/landport/public',
       dir: path.join(appInfo.baseDir, 'app/public'),
     },
     jwt: {

@@ -16,6 +16,12 @@ export default () => {
       return await next();
     }
 
+    // 案例管理接口：GET 请求允许普通用户访问，不需要管理员权限
+    if (path.startsWith('/api/cases') && ctx.method === 'GET') {
+      // GET 请求已经在 requireAuth 中检查了普通用户认证，这里直接放行
+      return await next();
+    }
+
     const adminUser = ctx.state && ctx.state.adminUser;
     // 兼容新旧格式：支持 u 和 userId 字段（使用 !== undefined 确保 0 值也能正确处理）
     const userId = adminUser?.userId !== undefined ? adminUser.userId : adminUser?.u;
