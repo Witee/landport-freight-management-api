@@ -24,6 +24,12 @@ const token = jwt.sign(payload, JWT_SECRET, {
   expiresIn: EXPIRES_IN,
 });
 
+// 如果设置了 ONLY_TOKEN 环境变量，只输出 token
+if (process.env.ONLY_TOKEN === 'true') {
+  console.log(token);
+  process.exit(0);
+}
+
 // 计算过期时间（用于显示）
 const now = new Date();
 const expiresAt = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000); // 365 天后
