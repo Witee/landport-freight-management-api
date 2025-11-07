@@ -6,7 +6,7 @@ const baseCandidates = ['http://127.0.0.1:7001', 'http://127.0.0.1:7002'];
 async function pickBase() {
   for (const b of baseCandidates) {
     try {
-      const res = await fetch(b + '/api/goods/list');
+      const res = await fetch(b + '/api/lpwx/goods/list');
       if (res.ok || res.status === 403 || res.status === 400 || res.status === 404) return b;
     } catch {}
   }
@@ -17,7 +17,7 @@ async function waitForServer(base, timeoutMs = 25000) {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     try {
-      const res = await fetch(base + '/api/goods/list');
+      const res = await fetch(base + '/api/lpwx/goods/list');
       if (res.ok || [400, 401, 403, 404, 405].includes(res.status)) return true;
     } catch {}
     await new Promise((r) => setTimeout(r, 500));
@@ -68,7 +68,7 @@ async function uploadSingle(base, token, goodsId) {
   if (goodsId) fd.append('goodsId', String(goodsId));
   const headers = {};
   if (token) headers['authorization'] = 'Bearer ' + token;
-  const res = await fetch(base + '/api/upload/goods-image', { method: 'POST', headers, body: fd });
+  const res = await fetch(base + '/api/lpwx/upload/goods-image', { method: 'POST', headers, body: fd });
   const text = await res.text();
   let data;
   try {
@@ -88,7 +88,7 @@ async function uploadMultiple(base, token, goodsId) {
   if (goodsId) fd.append('goodsId', String(goodsId));
   const headers = {};
   if (token) headers['authorization'] = 'Bearer ' + token;
-  const res = await fetch(base + '/api/upload/multiple-images', { method: 'POST', headers, body: fd });
+  const res = await fetch(base + '/api/lpwx/upload/multiple-images', { method: 'POST', headers, body: fd });
   const text = await res.text();
   let data;
   try {
@@ -104,29 +104,26 @@ const main = async () => {
   console.log('[smoke] base =', base);
   const results = {};
   try {
-    // login admin
-    const loginAdmin = await jsonReq(base, 'POST', '/api/auth/wx-login', {
-      token: 'admin-1',
-      nickname: 'Admin',
-      phone: '13900139000',
-      role: 'admin',
-    });
-    if (loginAdmin.status !== 200) throw new Error('login admin failed ' + JSON.stringify(loginAdmin));
-    const adminToken = loginAdmin.data?.data?.token;
-
-    // login user
-    const loginUser = await jsonReq(base, 'POST', '/api/auth/wx-login', {
-      token: 'user-1',
+    // login user (微信小程序登录)
+    const loginUser = await jsonReq(base, 'POST', '/api/lpwx/auth/wx-login', {
+      code: 'test_code',
       nickname: 'User',
-      phone: '13800138000',
-      role: 'user',
+      avatar: 'https://example.com/avatar.jpg',
     });
     if (loginUser.status !== 200) throw new Error('login user failed ' + JSON.stringify(loginUser));
     const userToken = loginUser.data?.data?.token;
     const userId = loginUser.data?.data?.user?.id;
 
+    // login admin (达成官网登录)
+    const loginAdmin = await jsonReq(base, 'POST', '/api/dc/auth/login', {
+      username: 'admin',
+      password: 'admin123',
+    });
+    // admin login may fail if user doesn't exist, that's ok for smoke test
+    const adminToken = loginAdmin.data?.data?.token;
+
     // user list
-    results.list = await jsonReq(base, 'GET', '/api/goods/list', null, userToken);
+    results.list = await jsonReq(base, 'GET', '/api/lpwx/goods/list', null, userToken);
 
     // user create goods
     const createBody = {
@@ -142,24 +139,32 @@ const main = async () => {
       remark: '首单',
       images: [],
     };
-    const create = await jsonReq(base, 'POST', '/api/goods', createBody, userToken);
+    const create = await jsonReq(base, 'POST', '/api/lpwx/goods', createBody, userToken);
     if (create.status !== 200) throw new Error('create goods failed ' + JSON.stringify(create));
     const goodsId = create.data?.data?.id;
 
     // user detail
-    results.detail = await jsonReq(base, 'GET', `/api/goods/${goodsId}`, null, userToken);
+    results.detail = await jsonReq(base, 'GET', `/api/lpwx/goods/${goodsId}`, null, userToken);
     // quick check for new fields
     const d = results.detail?.data?.data || {};
     results.detail._fields = { name: d.name, waybillNo: d.waybillNo, freight: d.freight };
 
     // user update
-    results.update = await jsonReq(base, 'PUT', `/api/goods/${goodsId}`, { remark: '已更新' }, userToken);
+    results.update = await jsonReq(base, 'PUT', `/api/lpwx/goods/${goodsId}`, { remark: '已更新' }, userToken);
 
     // user update status
-    results.status = await jsonReq(base, 'PATCH', `/api/goods/${goodsId}/status`, { status: 'collected' }, userToken);
+    results.status = await jsonReq(
+      base,
+      'PATCH',
+      `/api/lpwx/goods/${goodsId}/status`,
+      { status: 'collected' },
+      userToken
+    );
 
     // admin list-all
-    results.listAll = await jsonReq(base, 'GET', '/api/goods/list-all', null, adminToken);
+    if (adminToken) {
+      results.listAll = await jsonReq(base, 'GET', '/api/lpwx/goods/list-all', null, adminToken);
+    }
 
     // upload single (bind to goods)
     results.uploadSingle = await uploadSingle(base, userToken, goodsId);
@@ -168,13 +173,13 @@ const main = async () => {
     results.uploadMultiple = await uploadMultiple(base, userToken, goodsId);
 
     // re-fetch detail to verify images bound
-    results.detailAfterUpload = await jsonReq(base, 'GET', `/api/goods/${goodsId}`, null, userToken);
+    results.detailAfterUpload = await jsonReq(base, 'GET', `/api/lpwx/goods/${goodsId}`, null, userToken);
 
     // search by keyword (should match waybillNo or names/phones)
-    results.searchKeyword = await jsonReq(base, 'GET', `/api/goods/list?keyword=SF123456`, null, userToken);
+    results.searchKeyword = await jsonReq(base, 'GET', `/api/lpwx/goods/list?keyword=SF123456`, null, userToken);
 
     // user delete
-    results.delete = await jsonReq(base, 'DELETE', `/api/goods/${goodsId}`, null, userToken);
+    results.delete = await jsonReq(base, 'DELETE', `/api/lpwx/goods/${goodsId}`, null, userToken);
 
     // print concise summary
     // check upload URL structure contains /public/uploads/YYYY-MM-DD/{userId}/

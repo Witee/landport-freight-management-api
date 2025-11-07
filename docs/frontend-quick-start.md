@@ -42,9 +42,9 @@ WEBSITE_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjAsInJvbGUiOiJ1c
 export default {
   proxy: {
     '/api': {
-      target: 'https://dev.dachengguoji.com.cn/landport',
+      target: 'https://dev.dachengguoji.com.cn/landport', // 注意：包含 /landport 前缀
       changeOrigin: true,
-      pathRewrite: { '^/api': '/api' },
+      pathRewrite: { '^/api': '/api' }, // 注意：target 已包含 /landport，pathRewrite 保持 /api 不变
       configure: (proxy, options) => {
         proxy.on('proxyReq', (proxyReq, req, res) => {
           // 自动添加 Authorization 请求头
@@ -58,6 +58,12 @@ export default {
   },
 };
 ```
+
+**重要说明：**
+- `target` 必须包含 `/landport` 前缀
+- `pathRewrite` 保持 `/api` 不变（因为 `target` 已包含 `/landport`）
+- 前端使用 `/api/cases` 调用，代理会自动转发到 `https://dev.dachengguoji.com.cn/landport/api/cases`
+- 工作原理：`target` + `pathRewrite结果` = `https://dev.dachengguoji.com.cn/landport` + `/api/cases` = `https://dev.dachengguoji.com.cn/landport/api/cases`
 
 ## 三、调用示例
 
@@ -79,6 +85,7 @@ export interface Case {
 }
 
 // 获取案例列表
+// 注意：生产环境需要手动添加 Token 和 /landport 前缀
 export async function getCaseList(params: {
   page?: number;
   pageSize?: number;
@@ -86,33 +93,83 @@ export async function getCaseList(params: {
   startDate?: string;
   endDate?: string;
 }) {
-  return request<{
-    code: number;
-    message: string;
-    data: {
-      list: Case[];
-      pagination: {
-        page: number;
-        pageSize: number;
-        total: number;
-        totalPages: number;
+  const WEBSITE_TOKEN = process.env.WEBSITE_TOKEN || '';
+  const API_BASE_URL = process.env.API_BASE_URL || 'https://dachengguoji.com.cn/landport';
+  const isProduction = process.env.NODE_ENV === 'production';
+  
+  if (isProduction) {
+    // 生产环境：使用完整 URL 并手动添加 Token
+    return request<{
+      code: number;
+      message: string;
+      data: {
+        list: Case[];
+        pagination: {
+          page: number;
+          pageSize: number;
+          total: number;
+          totalPages: number;
+        };
       };
-    };
-  }>('/api/cases', {
-    method: 'GET',
-    params,
-  });
+    }>(`${API_BASE_URL}/api/cases`, {
+      method: 'GET',
+      params,
+      headers: {
+        'Authorization': `Bearer ${WEBSITE_TOKEN}`, // 手动添加 Token
+        'Content-Type': 'application/json',
+      },
+    });
+  } else {
+    // 开发环境：使用相对路径，代理会自动添加 Token
+    return request<{
+      code: number;
+      message: string;
+      data: {
+        list: Case[];
+        pagination: {
+          page: number;
+          pageSize: number;
+          total: number;
+          totalPages: number;
+        };
+      };
+    }>('/api/cases', {
+      method: 'GET',
+      params,
+    });
+  }
 }
 
 // 获取案例详情
+// 注意：生产环境需要手动添加 Token 和 /landport 前缀
 export async function getCaseDetail(id: number) {
-  return request<{
-    code: number;
-    message: string;
-    data: Case;
-  }>(`/api/cases/${id}`, {
-    method: 'GET',
-  });
+  const WEBSITE_TOKEN = process.env.WEBSITE_TOKEN || '';
+  const API_BASE_URL = process.env.API_BASE_URL || 'https://dachengguoji.com.cn/landport';
+  const isProduction = process.env.NODE_ENV === 'production';
+  
+  if (isProduction) {
+    // 生产环境：使用完整 URL 并手动添加 Token
+    return request<{
+      code: number;
+      message: string;
+      data: Case;
+    }>(`${API_BASE_URL}/api/cases/${id}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${WEBSITE_TOKEN}`, // 手动添加 Token
+        'Content-Type': 'application/json',
+      },
+    });
+  } else {
+    // 开发环境：使用相对路径，代理会自动添加 Token
+    return request<{
+      code: number;
+      message: string;
+      data: Case;
+    }>(`/api/cases/${id}`, {
+      method: 'GET',
+    });
+  }
 }
 ```
 

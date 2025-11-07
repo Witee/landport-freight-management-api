@@ -41,9 +41,9 @@ export default (app) => {
         comment: '手机号',
       },
       role: {
-        type: ENUM('admin', 'user'),
+        type: ENUM('sysAdmin', 'admin', 'user'),
         defaultValue: 'user',
-        comment: '用户角色',
+        comment: '用户角色：sysAdmin-系统管理员（拥有最高权限，可访问所有系统），admin-某一套管理系统的管理员（可访问对应系统的管理功能），user-普通用户',
       },
       lastLoginAt: {
         type: DATE,

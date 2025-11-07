@@ -127,22 +127,63 @@ export interface CaseListResponse {
 }
 
 // 获取案例列表
+// 注意：生产环境需要手动添加 Token 和 /landport 前缀
 export async function getCaseList(params: CaseListParams): Promise<CaseListResponse> {
-  return request<CaseListResponse>('/api/cases', {
-    method: 'GET',
-    params,
-  });
+  // 从环境变量获取配置（构建时注入）
+  const WEBSITE_TOKEN = process.env.WEBSITE_TOKEN || '';
+  const API_BASE_URL = process.env.API_BASE_URL || 'https://dachengguoji.com.cn/landport';
+  
+  // 生产环境：使用完整 URL 并手动添加 Token
+  // 开发环境：使用相对路径，代理会自动处理
+  const isProduction = process.env.NODE_ENV === 'production';
+  
+  if (isProduction) {
+    return request<CaseListResponse>(`${API_BASE_URL}/api/cases`, {
+      method: 'GET',
+      params,
+      headers: {
+        'Authorization': `Bearer ${WEBSITE_TOKEN}`, // 生产环境手动添加 Token
+        'Content-Type': 'application/json',
+      },
+    });
+  } else {
+    // 开发环境：使用相对路径，代理会自动添加 Token
+    return request<CaseListResponse>('/api/cases', {
+      method: 'GET',
+      params,
+    });
+  }
 }
 
 // 获取案例详情
+// 注意：生产环境需要手动添加 Token 和 /landport 前缀
 export async function getCaseDetail(id: number) {
-  return request<{
-    code: number;
-    message: string;
-    data: Case;
-  }>(`/api/cases/${id}`, {
-    method: 'GET',
-  });
+  const WEBSITE_TOKEN = process.env.WEBSITE_TOKEN || '';
+  const API_BASE_URL = process.env.API_BASE_URL || 'https://dachengguoji.com.cn/landport';
+  const isProduction = process.env.NODE_ENV === 'production';
+  
+  if (isProduction) {
+    return request<{
+      code: number;
+      message: string;
+      data: Case;
+    }>(`${API_BASE_URL}/api/cases/${id}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${WEBSITE_TOKEN}`, // 生产环境手动添加 Token
+        'Content-Type': 'application/json',
+      },
+    });
+  } else {
+    // 开发环境：使用相对路径，代理会自动添加 Token
+    return request<{
+      code: number;
+      message: string;
+      data: Case;
+    }>(`/api/cases/${id}`, {
+      method: 'GET',
+    });
+  }
 }
 ```
 
@@ -480,12 +521,19 @@ const getImageUrl = (imagePath: string) => `${API_BASE_URL}${imagePath}`;
 
 **原因：**
 - API 地址不正确
-- 代理配置不正确
+- 代理配置不正确（开发环境）
+- 生产环境未正确配置 API 地址
 
 **解决方案：**
-1. 检查 API 基础地址是否正确
-2. 检查代理配置中的 `target` 是否正确
-3. 检查路径是否正确（应该是 `/api/cases`，不是 `/landport/api/cases`）
+1. **开发环境：**
+   - 检查 API 基础地址是否正确
+   - 检查代理配置中的 `target` 是否正确
+   - 检查路径是否正确（应该是 `/api/cases`，代理会自动添加 `/landport` 前缀）
+
+2. **生产环境：**
+   - 检查 API 地址是否包含 `/landport` 前缀
+   - 确保使用完整 URL：`https://dachengguoji.com.cn/landport/api/cases`
+   - 检查环境变量 `API_BASE_URL` 是否正确配置
 
 ### 问题 3: 图片无法显示
 

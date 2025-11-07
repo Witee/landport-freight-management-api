@@ -1,7 +1,7 @@
 import { Controller } from 'egg';
 
 export default class CaseController extends Controller {
-  // 获取案例列表（所有认证用户可访问）
+  // 获取案例列表（支持 website-token 访问，所有认证用户可访问）
   async list() {
     const { ctx } = this;
     const query = { ...ctx.query } as any;
@@ -32,7 +32,7 @@ export default class CaseController extends Controller {
     };
   }
 
-  // 获取案例详情（所有认证用户可访问）
+  // 获取案例详情（支持 website-token 访问，所有认证用户可访问）
   async detail() {
     const { ctx } = this;
     const id = ctx.params && ctx.params.id;
@@ -46,13 +46,13 @@ export default class CaseController extends Controller {
     };
   }
 
-  // 创建案例（仅 admin）
+  // 创建案例（仅 sysAdmin 或 admin）
   async create() {
     const { ctx } = this;
-    // 检查管理员权限（通过adminAuth的都是admin）
+    // 检查管理员权限（通过dcAuth的都是sysAdmin或admin）
     const adminUser = ctx.state && ctx.state.adminUser;
     const role = adminUser?.role;
-    if (!adminUser || role !== 'admin') {
+    if (!adminUser || (role !== 'sysAdmin' && role !== 'admin')) {
       ctx.throw(403, '需要管理员权限');
     }
     const body = ctx.request.body;
@@ -77,13 +77,13 @@ export default class CaseController extends Controller {
     };
   }
 
-  // 更新案例（仅 admin）
+  // 更新案例（仅 sysAdmin 或 admin）
   async update() {
     const { ctx } = this;
-    // 检查管理员权限（通过adminAuth的都是admin）
+    // 检查管理员权限（通过dcAuth的都是sysAdmin或admin）
     const adminUser = ctx.state && ctx.state.adminUser;
     const role = adminUser?.role;
-    if (!adminUser || role !== 'admin') {
+    if (!adminUser || (role !== 'sysAdmin' && role !== 'admin')) {
       ctx.throw(403, '需要管理员权限');
     }
     const body = ctx.request.body;
@@ -114,13 +114,13 @@ export default class CaseController extends Controller {
     };
   }
 
-  // 删除案例（仅 admin）
+  // 删除案例（仅 sysAdmin 或 admin）
   async delete() {
     const { ctx } = this;
-    // 检查管理员权限（通过adminAuth的都是admin）
+    // 检查管理员权限（通过dcAuth的都是sysAdmin或admin）
     const adminUser = ctx.state && ctx.state.adminUser;
     const role = adminUser?.role;
-    if (!adminUser || role !== 'admin') {
+    if (!adminUser || (role !== 'sysAdmin' && role !== 'admin')) {
       ctx.throw(403, '需要管理员权限');
     }
     const id = ctx.params && ctx.params.id;

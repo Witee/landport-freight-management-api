@@ -4,7 +4,8 @@ export default (appInfo) => {
   const keysFromEnv = process.env.APP_KEYS && String(process.env.APP_KEYS).trim();
   const config = {
     keys: keysFromEnv || `${appInfo.name}_QsVn1B7y4z`,
-    middleware: ['errorHandler', 'jwtAuth', 'requireAuth', 'adminAuth', 'requireAdminAuth'],
+    // 中间件执行顺序：dcAuth 必须在 requireAuth 之前，以便 requireAuth 能够检查 adminUser
+    middleware: ['errorHandler', 'jwtAuth', 'dcAuth', 'requireAuth', 'requireAdminAuth'],
     multipart: {
       mode: 'file',
     },

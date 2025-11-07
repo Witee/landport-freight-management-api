@@ -22,13 +22,47 @@ export default class CaseService extends Service {
     return CaseModel;
   }
 
+  // 清理图片路径，确保只存储相对路径（移除域名前缀）
+  private normalizeImagePaths(images: any[]): string[] {
+    if (!Array.isArray(images)) return [];
+    return images.map((img: any) => {
+      if (typeof img !== 'string') return img;
+      // 移除完整 URL，只保留相对路径
+      // 匹配格式：
+      // - https://domain.com/landport/public/uploads/...
+      // - https://domain.com/public/uploads/...
+      // - /landport/public/uploads/...
+      // - /public/uploads/...
+      let normalized = img.trim();
+      
+      // 移除协议和域名部分（如果存在）
+      normalized = normalized.replace(/^https?:\/\/[^\/]+/i, '');
+      
+      // 移除 /landport 前缀（如果存在）
+      normalized = normalized.replace(/^\/landport/, '');
+      
+      // 确保以 /public/uploads/ 开头
+      if (normalized.startsWith('/public/uploads/')) {
+        return normalized;
+      }
+      
+      // 如果已经是相对路径格式，直接返回
+      if (normalized.startsWith('/public/')) {
+        return normalized;
+      }
+      
+      // 如果无法识别，返回原值（可能是旧数据格式）
+      return img;
+    });
+  }
+
   // 创建案例
   async createCase(caseData: any) {
     const CaseModel = await this.loadModel();
     const payload: any = {
       projectName: caseData.projectName,
       date: caseData.date,
-      images: Array.isArray(caseData.images) ? caseData.images : [],
+      images: this.normalizeImagePaths(Array.isArray(caseData.images) ? caseData.images : []),
     };
     return await CaseModel.create(payload);
   }
@@ -51,7 +85,7 @@ export default class CaseService extends Service {
       updateData.date = caseData.date;
     }
     if (caseData.images !== undefined) {
-      updateData.images = Array.isArray(caseData.images) ? caseData.images : [];
+      updateData.images = this.normalizeImagePaths(Array.isArray(caseData.images) ? caseData.images : []);
     }
     return await caseItem.update(updateData);
   }

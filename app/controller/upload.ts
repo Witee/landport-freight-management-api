@@ -4,7 +4,7 @@ import path from 'path';
 
 export default class UploadController extends Controller {
   /**
-   * 上传货物图片
+   * 上传货物图片（普通用户，由微信登录控制）
    */
   public async uploadGoodsImage() {
     const { ctx } = this;
@@ -109,7 +109,7 @@ export default class UploadController extends Controller {
   }
 
   /**
-   * 批量上传图片
+   * 批量上传图片（普通用户，由微信登录控制）
    */
   public async uploadMultipleImages() {
     const { ctx } = this;
@@ -138,6 +138,128 @@ export default class UploadController extends Controller {
             ctx.logger.warn('批量绑定货物图片失败 goodsId=%s error=%s', goodsId, (e && e.message) || e);
           }
         }
+        return res;
+      });
+
+      const raw = await Promise.all(tasks);
+      const results = raw.filter(Boolean) as any[];
+
+      ctx.body = {
+        code: 200,
+        message: '上传成功',
+        data: results,
+      };
+    } catch (error: any) {
+      ctx.logger.error('批量上传失败:', error);
+      if (error && (error.status || error.statusCode)) {
+        throw error;
+      }
+      ctx.throw(500, '文件上传失败');
+    } finally {
+      await ctx.cleanupRequestFiles();
+    }
+  }
+
+  /**
+   * 管理员上传货物图片（管理员，由 dcAuth 控制）
+   * 通过 User.role === 'sysAdmin' 或 'admin' 判断管理员
+   */
+  public async uploadGoodsImageAdmin() {
+    const { ctx } = this;
+
+    try {
+      const file = ctx.request.files?.[0] as any;
+      if (!file) {
+        ctx.throw(400, '未选择文件');
+        return;
+      }
+
+      // 验证文件类型（既校验 mime，又兜底校验扩展名）
+      const allowedMimes = new Set(['image/jpeg', 'image/png', 'image/gif']);
+      const allowedExts = new Set(['.jpg', '.jpeg', '.png', '.gif']);
+      const mime: string = (file as any).mime || '';
+      const ext = path.extname((file as any).filename || '').toLowerCase();
+      if (!allowedMimes.has(mime) && !allowedExts.has(ext)) {
+        ctx.throw(400, '只支持 jpg、png、gif 格式的图片');
+      }
+
+      // 验证文件大小 (最大 20MB)，优先使用 file.size，没有则使用 stat
+      const maxSize = 20 * 1024 * 1024;
+      const fileSize: number = (file as any).size ?? fs.statSync((file as any).filepath).size;
+      if (fileSize > maxSize) {
+        ctx.throw(400, '图片大小不能超过 5MB');
+      }
+
+      // 检查管理员权限（通过 dcAuth 的都是 sysAdmin 或 admin）
+      const adminUser = ctx.state && ctx.state.adminUser;
+      const role = adminUser?.role;
+      if (!adminUser || (role !== 'sysAdmin' && role !== 'admin')) {
+        ctx.throw(403, '需要管理员权限');
+      }
+
+      // 计算用户ID（从 adminUser 获取）
+      const userId = adminUser.userId !== undefined ? adminUser.userId : adminUser.u;
+      if (userId === undefined || userId === null) {
+        ctx.throw(401, '未登录或令牌无效');
+      }
+
+      // 存储文件（本地示例：copyFile 更稳健）
+      const result = await this.uploadToCloudStorage(file as any, String(userId));
+
+      ctx.body = {
+        code: 200,
+        message: '上传成功',
+        data: {
+          url: result.url,
+          filename: result.filename,
+        },
+      };
+    } catch (error: any) {
+      ctx.logger.error('文件上传失败:', error);
+      if (error && (error.status || error.statusCode)) {
+        // 透传业务性错误（如 400），避免一律变成 500
+        throw error;
+      }
+      ctx.throw(500, '文件上传失败');
+    } finally {
+      // 清理临时文件
+      await ctx.cleanupRequestFiles();
+    }
+  }
+
+  /**
+   * 管理员批量上传图片（管理员，由 dcAuth 控制）
+   * 通过 User.role === 'sysAdmin' 或 'admin' 判断管理员
+   */
+  public async uploadMultipleImagesAdmin() {
+    const { ctx } = this;
+
+    try {
+      const files = (ctx.request.files || []) as any[];
+      const allowedMimes = new Set(['image/jpeg', 'image/png', 'image/gif']);
+      const allowedExts = new Set(['.jpg', '.jpeg', '.png', '.gif']);
+      const maxSize = 20 * 1024 * 1024;
+
+      // 检查管理员权限（通过 dcAuth 的都是 sysAdmin 或 admin）
+      const adminUser = ctx.state && ctx.state.adminUser;
+      const role = adminUser?.role;
+      if (!adminUser || (role !== 'sysAdmin' && role !== 'admin')) {
+        ctx.throw(403, '需要管理员权限');
+      }
+
+      // 计算用户ID（从 adminUser 获取）
+      const userId = adminUser.userId !== undefined ? adminUser.userId : adminUser.u;
+      if (userId === undefined || userId === null) {
+        ctx.throw(401, '未登录或令牌无效');
+      }
+
+      const tasks = (files as any[]).map(async (file: any) => {
+        const mime: string = (file as any).mime || '';
+        const ext = path.extname((file as any).filename || '').toLowerCase();
+        const size = (file as any).size ?? fs.statSync((file as any).filepath).size;
+        if (!(allowedMimes.has(mime) || allowedExts.has(ext))) return null;
+        if (size > maxSize) return null;
+        const res = await this.uploadToCloudStorage(file as any, String(userId));
         return res;
       });
 

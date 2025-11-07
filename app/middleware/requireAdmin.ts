@@ -20,9 +20,9 @@ export default () => {
       }
     }
 
-    // 检查是否为管理员（通过adminAuth的都是admin）
+    // 检查是否为管理员（通过dcAuth的都是sysAdmin或admin）
     const role = adminUser.role;
-    if (role !== 'admin') {
+    if (role !== 'sysAdmin' && role !== 'admin') {
       ctx.throw(403, '需要管理员权限');
     }
 
