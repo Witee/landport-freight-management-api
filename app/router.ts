@@ -31,7 +31,7 @@ export default (app) => {
   // 前缀：dc
   // 权限：GET 由 website-token 控制，写操作由 /api/dc/auth/login 控制（通过 User.role 判断管理员）
 
-  // 后台管理认证（达成官网管理接口，路径不体现 admin）
+  // 后台管理认证（达成官网管理接口）
   router.post('/dc/auth/login', controller.dcAuth.login);
 
   // 案例相关（GET 请求支持 website-token，写操作需要管理员权限）

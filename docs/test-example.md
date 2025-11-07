@@ -82,7 +82,7 @@ cd /Users/witee/Code/landport-freight-management-api
         "projectName": "项目名称",
         "date": "2025-11-06",
         "images": [
-          "/public/uploads/2025-11-06/1/image1.jpg"
+          "/uploads/2025-11-06/1/image1.jpg"
         ],
         "createdAt": "2025-11-06T10:00:00.000Z",
         "updatedAt": "2025-11-06T10:00:00.000Z"

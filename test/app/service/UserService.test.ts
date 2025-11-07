@@ -21,7 +21,13 @@ describe('UserService', () => {
       userService = await app.getEggObject(UserService);
     } catch (error) {
       // 如果无法通过 getEggObject 获取，直接实例化
-      userService = new UserService({ app, ctx: {} as any } as any);
+      // 确保 ctx.model.User 存在，以便 UserService 使用同一个 UserModel 实例
+      const mockCtx = {
+        model: {
+          User: UserModel,
+        },
+      } as any;
+      userService = new UserService({ app, ctx: mockCtx } as any);
     }
   });
 

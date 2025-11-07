@@ -451,8 +451,8 @@ curl -X GET "https://dev.dachengguoji.com.cn/landport/api/cases/1" \
         "projectName": "项目A",
         "date": "2025-11-06",
         "images": [
-          "/public/uploads/2025-11-06/1/image1.jpg",
-          "/public/uploads/2025-11-06/1/image2.jpg"
+          "/uploads/2025-11-06/1/image1.jpg",
+          "/uploads/2025-11-06/1/image2.jpg"
         ],
         "createdAt": "2025-11-06T10:00:00.000Z",
         "updatedAt": "2025-11-06T10:00:00.000Z"
@@ -493,8 +493,8 @@ const getImageUrl = (imagePath: string) => {
 };
 
 // 使用
-const fullUrl = getImageUrl('/public/uploads/2025-11-06/1/image1.jpg');
-// 结果: https://dev.dachengguoji.com.cn/landport/public/uploads/2025-11-06/1/image1.jpg
+const fullUrl = getImageUrl('/uploads/2025-11-06/1/image1.jpg');
+// 结果: https://dev.dachengguoji.com.cn/uploads/2025-11-06/1/image1.jpg
 
 // 方法 2：使用环境变量
 const API_BASE_URL = process.env.API_BASE_URL || 'https://dev.dachengguoji.com.cn/landport';
@@ -543,8 +543,8 @@ const getImageUrl = (imagePath: string) => `${API_BASE_URL}${imagePath}`;
 
 **解决方案：**
 1. 确保图片地址拼接了完整的基础 URL
-2. 检查图片路径格式：`/public/uploads/...`
-3. 完整 URL 格式：`https://dev.dachengguoji.com.cn/landport/public/uploads/...`
+2. 检查图片路径格式：`/uploads/...`
+3. 完整 URL 格式：`https://dev.dachengguoji.com.cn/uploads/...`
 
 ### 问题 4: 代理不工作
 

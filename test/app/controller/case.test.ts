@@ -68,13 +68,13 @@ describe('CaseController', () => {
     await CaseModel.create({
       projectName: '测试项目1',
       date: '2025-01-01',
-      images: ['/public/test1.jpg'],
+      images: ['/uploads/test1.jpg'],
     });
 
     await CaseModel.create({
       projectName: '测试项目2',
       date: '2025-01-02',
-      images: ['/public/test2.jpg'],
+      images: ['/uploads/test2.jpg'],
     });
   });
 

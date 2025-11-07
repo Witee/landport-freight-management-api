@@ -29,26 +29,33 @@ export default class CaseService extends Service {
       if (typeof img !== 'string') return img;
       // 移除完整 URL，只保留相对路径
       // 匹配格式：
-      // - https://domain.com/landport/public/uploads/...
-      // - https://domain.com/public/uploads/...
-      // - /landport/public/uploads/...
-      // - /public/uploads/...
+      // - https://domain.com/uploads/...
+      // - /uploads/...
+      // - https://domain.com/landport/public/uploads/...（旧格式，兼容处理）
+      // - https://domain.com/public/uploads/...（旧格式，兼容处理）
+      // - /landport/public/uploads/...（旧格式，兼容处理）
+      // - /public/uploads/...（旧格式，兼容处理）
       let normalized = img.trim();
       
       // 移除协议和域名部分（如果存在）
-      normalized = normalized.replace(/^https?:\/\/[^\/]+/i, '');
+      normalized = normalized.replace(/^https?:\/\/[^/]+/i, '');
       
       // 移除 /landport 前缀（如果存在）
       normalized = normalized.replace(/^\/landport/, '');
       
-      // 确保以 /public/uploads/ 开头
-      if (normalized.startsWith('/public/uploads/')) {
+      // 优先处理新版路径
+      if (normalized.startsWith('/uploads/')) {
         return normalized;
       }
       
-      // 如果已经是相对路径格式，直接返回
+      // 兼容旧路径（/public/uploads/xxx）
+      if (normalized.startsWith('/public/uploads/')) {
+        return normalized.replace(/^\/public\/uploads\//, '/uploads/');
+      }
+
+      // 兼容旧路径（/public/xxx）
       if (normalized.startsWith('/public/')) {
-        return normalized;
+        return normalized.replace(/^\/public\//, '/uploads/');
       }
       
       // 如果无法识别，返回原值（可能是旧数据格式）

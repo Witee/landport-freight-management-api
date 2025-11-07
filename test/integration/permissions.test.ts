@@ -79,7 +79,7 @@ describe('权限控制集成测试', () => {
     await CaseModel.create({
       projectName: '测试案例1',
       date: '2025-01-01',
-      images: ['/public/test1.jpg'],
+    images: ['/uploads/test1.jpg'],
     });
   });
 

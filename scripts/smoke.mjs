@@ -182,7 +182,7 @@ const main = async () => {
     results.delete = await jsonReq(base, 'DELETE', `/api/lpwx/goods/${goodsId}`, null, userToken);
 
     // print concise summary
-    // check upload URL structure contains /public/uploads/YYYY-MM-DD/{userId}/
+    // check upload URL structure contains /uploads/YYYY-MM-DD/{userId}/
     const today = new Date();
     const yyyy = String(today.getFullYear());
     const mm = String(today.getMonth() + 1).padStart(2, '0');
@@ -194,7 +194,7 @@ const main = async () => {
       ? results.uploadMultiple.data.data.map((x) => x.url)
       : [];
 
-    const expectedPart = `/public/uploads/${dateDir}/${userId}/`;
+    const expectedPart = `/uploads/${dateDir}/${userId}/`;
 
     const summary = Object.fromEntries(
       Object.entries(results).map(([k, v]) => [

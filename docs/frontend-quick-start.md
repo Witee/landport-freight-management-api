@@ -338,7 +338,7 @@ getCaseList({
         "projectName": "项目A",
         "date": "2025-11-06",
         "images": [
-          "/public/uploads/2025-11-06/1/image1.jpg"
+          "/uploads/2025-11-06/1/image1.jpg"
         ],
         "createdAt": "2025-11-06T10:00:00.000Z",
         "updatedAt": "2025-11-06T10:00:00.000Z"
@@ -378,8 +378,8 @@ const getImageUrl = (imagePath: string) => {
 };
 
 // 使用
-const fullUrl = getImageUrl('/public/uploads/2025-11-06/1/image1.jpg');
-// 结果: https://dev.dachengguoji.com.cn/landport/public/uploads/2025-11-06/1/image1.jpg
+const fullUrl = getImageUrl('/uploads/2025-11-06/1/image1.jpg');
+// 结果: https://dev.dachengguoji.com.cn/uploads/2025-11-06/1/image1.jpg
 
 // 方法 2：在组件中直接拼接
 <img src={`https://dev.dachengguoji.com.cn/landport${image}`} alt="案例图片" />

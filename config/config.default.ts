@@ -35,8 +35,10 @@ export default (appInfo) => {
       fileExtensions: ['.jpg', '.jpeg', '.png', '.gif'],
     },
     static: {
-      prefix: '/landport/public',
-      dir: path.join(appInfo.baseDir, 'app/public'),
+      prefix: '/uploads',
+      dir: ((process.env.UPLOAD_ROOT_DIR && process.env.UPLOAD_ROOT_DIR.trim()) ||
+        (process.env.UPLOAD_PUBLIC_DIR && process.env.UPLOAD_PUBLIC_DIR.trim()) ||
+        path.join(appInfo.baseDir, 'app/uploads')),
     },
     jwt: {
       secret: 'G7xtJPiwG',
@@ -68,11 +70,11 @@ export default (appInfo) => {
         String(process.env.WX_USE_MOCK).toLowerCase() === '1' ||
         String(process.env.WX_USE_MOCK).toLowerCase() === 'true',
     },
-    // 可配置的 public 根目录（上传文件写入位置），默认指向项目内 app/public。
-    // 若设置环境变量 UPLOAD_PUBLIC_DIR，则以其为准（可在 config.*.ts 中继续覆写）。
-    uploadPublicDir:
+    // 可配置的上传根目录，默认指向项目内 app/uploads；支持新旧环境变量名称。
+    uploadRootDir:
+      (process.env.UPLOAD_ROOT_DIR && process.env.UPLOAD_ROOT_DIR.trim()) ||
       (process.env.UPLOAD_PUBLIC_DIR && process.env.UPLOAD_PUBLIC_DIR.trim()) ||
-      path.join(appInfo.baseDir, 'app/public'),
+      path.join(appInfo.baseDir, 'app/uploads'),
   };
   return { ...config, ...userConfig };
 };

@@ -8,7 +8,7 @@
   },
   "scripts": {
     "start": "cross-env APP_KEYS=landport-freight-management-api_QsVn1B7y4z eggctl start --daemon --title=landport-freight-management-api",
-    "docker": "cross-env UPLOAD_PUBLIC_DIR=/public APP_KEYS=landport-freight-management-api_QsVn1B7y4z eggctl start --title=landport-freight-management-api",
+    "docker": "cross-env UPLOAD_ROOT_DIR=/uploads APP_KEYS=landport-freight-management-api_QsVn1B7y4z eggctl start --title=landport-freight-management-api",
     "stop": "eggctl stop --title=landport-freight-management-api",
     "dev": "egg-bin dev",
     "smoke": "node scripts/smoke.mjs",

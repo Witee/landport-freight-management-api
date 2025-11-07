@@ -20,11 +20,12 @@
 docker run -itd --name landport-app \
   -p 7001:7001 \
   -v /data/landport-freight-management-api:/code \
-  -v /web/dachengguoji/public:/public \
+  -v /web/landport/uploads:/uploads \
   -w /code \
   -e MYSQL_HOST=172.17.0.1 \
   -e MYSQL_PASSWORD=Admin123. \
   -e REDIS_HOST=172.17.0.1 \
+  -e UPLOAD_ROOT_DIR=/uploads \
   node:22 \
   sh -c "cd /code && npm install --registry=https://registry.npm.taobao.org && npm run clean && npm run tsc && node scripts/generate-website-token.mjs > /code/.env.website-token && npm run docker"
 ```
@@ -64,12 +65,13 @@ node scripts/generate-website-token.mjs > .env.website-token
 docker run -itd --name landport-app \
   -p 7001:7001 \
   -v /data/landport-freight-management-api:/code \
-  -v /web/dachengguoji/public:/public \
+  -v /web/landport/uploads:/uploads \
   -v /data/landport-freight-management-api/.env.website-token:/code/.env.website-token:ro \
   -w /code \
   -e MYSQL_HOST=172.17.0.1 \
   -e MYSQL_PASSWORD=Admin123. \
   -e REDIS_HOST=172.17.0.1 \
+  -e UPLOAD_ROOT_DIR=/uploads \
   node:22 \
   sh -c "cd /code && npm install --registry=https://registry.npm.taobao.org && npm run clean && npm run tsc && npm run docker"
 ```
@@ -93,11 +95,12 @@ TOKEN=$(node scripts/generate-website-token.mjs 2>&1 | grep -A 1 "^Token:" | tai
 docker run -itd --name landport-app \
   -p 7001:7001 \
   -v /data/landport-freight-management-api:/code \
-  -v /web/dachengguoji/public:/public \
+  -v /web/landport/uploads:/uploads \
   -w /code \
   -e MYSQL_HOST=172.17.0.1 \
   -e MYSQL_PASSWORD=Admin123. \
   -e REDIS_HOST=172.17.0.1 \
+  -e UPLOAD_ROOT_DIR=/uploads \
   -e WEBSITE_TOKEN="$TOKEN" \
   node:22 \
   sh -c "cd /code && npm install --registry=https://registry.npm.taobao.org && npm run clean && npm run tsc && npm run docker"
@@ -148,11 +151,12 @@ docker rm landport-app 2>/dev/null || true
 docker run -itd --name landport-app \
   -p 7001:7001 \
   -v /data/landport-freight-management-api:/code \
-  -v /web/dachengguoji/public:/public \
+  -v /web/landport/uploads:/uploads \
   -w /code \
   -e MYSQL_HOST=172.17.0.1 \
   -e MYSQL_PASSWORD=Admin123. \
   -e REDIS_HOST=172.17.0.1 \
+  -e UPLOAD_ROOT_DIR=/uploads \
   node:22 \
   sh -c "cd /code && npm install --registry=https://registry.npm.taobao.org && npm run clean && npm run tsc && npm run docker"
 
@@ -195,11 +199,12 @@ docker rm landport-app 2>/dev/null || true
 docker run -itd --name landport-app \
   -p 7001:7001 \
   -v /data/landport-freight-management-api:/code \
-  -v /web/dachengguoji/public:/public \
+  -v /web/landport/uploads:/uploads \
   -w /code \
   -e MYSQL_HOST=172.17.0.1 \
   -e MYSQL_PASSWORD=Admin123. \
   -e REDIS_HOST=172.17.0.1 \
+  -e UPLOAD_ROOT_DIR=/uploads \
   node:22 \
   sh -c "cd /code && npm install --registry=https://registry.npm.taobao.org && npm run clean && npm run tsc && npm run docker"
 

@@ -125,11 +125,12 @@ echo "3. 启动 Docker 容器..."
 docker run -itd --name landport-app \
   -p 7001:7001 \
   -v "$PROJECT_DIR":/code \
-  -v /web/dachengguoji/public:/public \
+  -v /web/landport/uploads:/uploads \
   -w /code \
   -e MYSQL_HOST=172.17.0.1 \
   -e MYSQL_PASSWORD=Admin123. \
   -e REDIS_HOST=172.17.0.1 \
+  -e UPLOAD_ROOT_DIR=/uploads \
   node:22 \
   sh -c "cd /code && npm install --registry=https://registry.npm.taobao.org && npm run clean && npm run tsc && npm run docker"
 

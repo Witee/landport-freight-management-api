@@ -478,7 +478,7 @@ Authorization: Bearer <your_token>
         "id": 1,
         "projectName": "项目名称",
         "date": "2025-11-06",
-        "images": ["/public/uploads/2025-11-06/1/image1.jpg"],
+        "images": ["/uploads/2025-11-06/1/image1.jpg"],
         "createdAt": "2025-11-06T10:00:00.000Z",
         "updatedAt": "2025-11-06T10:00:00.000Z"
       }
@@ -510,9 +510,9 @@ Authorization: Bearer <your_token>
    - 不能访问需要管理员权限的接口（如 POST、PUT、DELETE `/api/cases`）
 
 4. **图片地址：**
-   - `images` 字段返回的是相对路径，如 `/public/uploads/...`
+   - `images` 字段返回的是相对路径，如 `/uploads/...`
    - 前端需要拼接完整的域名和路径前缀
-   - 完整 URL 格式：`https://dev.dachengguoji.com.cn/landport/public/uploads/...`
+   - 完整 URL 格式：`https://dev.dachengguoji.com.cn/uploads/...`
 
 5. **错误处理：**
    - 如果 Token 无效或过期，接口会返回 401 错误

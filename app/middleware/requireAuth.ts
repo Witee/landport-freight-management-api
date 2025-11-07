@@ -6,7 +6,11 @@ export default () => {
     }
     const path = ctx.path || '';
     // 放行静态文件（上传的图片等）
-    if (path.startsWith('/landport/public/') || path.startsWith('/public/')) {
+    if (
+      path.startsWith('/uploads/') ||
+      path.startsWith('/landport/public/') ||
+      path.startsWith('/public/')
+    ) {
       return await next();
     }
     // 放行认证相关接口

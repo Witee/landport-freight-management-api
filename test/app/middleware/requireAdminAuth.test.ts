@@ -17,6 +17,8 @@ describe('requireAdminAuth Middleware', () => {
     UserModel = UserFactory(app as any);
     await UserModel.sync({ alter: false, force: false });
 
+    // 确保 UserModel 被注册到 ctx.model.User，以便中间件可以使用同一个实例
+    // 通过模拟一个请求来触发中间件初始化
     const password = 'test123456';
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -36,13 +38,15 @@ describe('requireAdminAuth Middleware', () => {
       role: 'admin',
     });
 
-    sysAdminToken = (app as any).jwt.sign(
+    // 使用 jsonwebtoken 库生成 token，确保格式正确
+    const jwt = await import('jsonwebtoken');
+    sysAdminToken = jwt.default.sign(
       { u: sysAdminUser.id },
       (app.config as any).adminJwt.secret,
       { expiresIn: '1h' }
     );
 
-    adminToken = (app as any).jwt.sign(
+    adminToken = jwt.default.sign(
       { u: adminUser.id },
       (app.config as any).adminJwt.secret,
       { expiresIn: '1h' }

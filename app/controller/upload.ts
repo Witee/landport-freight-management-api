@@ -84,13 +84,15 @@ export default class UploadController extends Controller {
     const dd = String(now.getDate()).padStart(2, '0');
 
     const dateDir = `${yyyy}-${mm}-${dd}`;
-    const subDir = path.join('uploads', dateDir, safeUserId);
-    // 支持通过环境变量配置线上统一的 public 目录（优先）
-    // 若未设置，则沿用之前的逻辑：production 使用 /web/dachengguoji/public，其它环境使用项目内 app/public
+    const subDir = path.join(dateDir, safeUserId);
+    // 支持通过环境变量配置线上统一的上传目录（优先）
+    // 若未设置，则沿用默认逻辑：使用项目内 app/uploads
     const appCfg: any = (this.app && (this.app.config as any)) || {};
-    const resolvedPublicRoot =
-      (appCfg.uploadPublicDir && String(appCfg.uploadPublicDir).trim()) || path.join(process.cwd(), 'app/public');
-    const uploadDir = path.join(resolvedPublicRoot, subDir);
+    const resolvedUploadRoot =
+      (appCfg.uploadRootDir && String(appCfg.uploadRootDir).trim()) ||
+      (appCfg.uploadPublicDir && String(appCfg.uploadPublicDir).trim()) ||
+      path.join(process.cwd(), 'app/uploads');
+    const uploadDir = path.join(resolvedUploadRoot, subDir);
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
@@ -103,8 +105,8 @@ export default class UploadController extends Controller {
     // 直接拷贝临时文件到目标路径，避免流事件的不确定性
     await fs.promises.copyFile(file.filepath, targetPath);
 
-    // 统一使用以 /public 为前缀的对外可访问 URL
-    const urlPath = `/public/${subDir.replace(/\\/g, '/')}/${filename}`;
+    // 统一使用以 /uploads 为前缀的对外可访问 URL
+    const urlPath = `/uploads/${subDir.replace(/\\/g, '/')}/${filename}`;
     return { url: urlPath, filename };
   }
 

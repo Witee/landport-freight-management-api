@@ -45,7 +45,7 @@ Authorization: Bearer <token>
         "id": 1,
         "projectName": "项目名称",
         "date": "2025-11-06",
-        "images": ["/public/uploads/2025-11-06/1/image1.jpg"],
+        "images": ["/uploads/2025-11-06/1/image1.jpg"],
         "createdAt": "2025-11-06T10:00:00.000Z",
         "updatedAt": "2025-11-06T10:00:00.000Z"
       }
@@ -105,7 +105,7 @@ Authorization: Bearer <token>
     "id": 1,
     "projectName": "项目名称",
     "date": "2025-11-06",
-    "images": ["/public/uploads/2025-11-06/1/image1.jpg"],
+    "images": ["/uploads/2025-11-06/1/image1.jpg"],
     "createdAt": "2025-11-06T10:00:00.000Z",
     "updatedAt": "2025-11-06T10:00:00.000Z"
   }
@@ -140,7 +140,7 @@ Authorization: Bearer <admin_token>
 |------|------|------|------|------|
 | `projectName` | string | 是 | 项目名称，最大128字符，不能为空 | `"项目A"` |
 | `date` | string | 是 | 日期，格式：YYYY-MM-DD | `"2025-11-06"` |
-| `images` | array | 否 | 图片链接地址数组 | `["/public/uploads/..."]` |
+| `images` | array | 否 | 图片链接地址数组 | `["/uploads/..."]` |
 
 **请求示例：**
 ```bash
@@ -151,7 +151,7 @@ Content-Type: application/json
 {
   "projectName": "项目A",
   "date": "2025-11-06",
-  "images": ["/public/uploads/2025-11-06/1/image1.jpg"]
+  "images": ["/uploads/2025-11-06/1/image1.jpg"]
 }
 ```
 
@@ -164,7 +164,7 @@ Content-Type: application/json
     "id": 1,
     "projectName": "项目A",
     "date": "2025-11-06",
-    "images": ["/public/uploads/2025-11-06/1/image1.jpg"],
+    "images": ["/uploads/2025-11-06/1/image1.jpg"],
     "createdAt": "2025-11-06T10:00:00.000Z",
     "updatedAt": "2025-11-06T10:00:00.000Z"
   }
@@ -213,7 +213,7 @@ Authorization: Bearer <admin_token>
 |------|------|------|------|------|
 | `projectName` | string | 否 | 项目名称，最大128字符 | `"项目B"` |
 | `date` | string | 否 | 日期，格式：YYYY-MM-DD | `"2025-11-07"` |
-| `images` | array | 否 | 图片链接地址数组 | `["/public/uploads/..."]` |
+| `images` | array | 否 | 图片链接地址数组 | `["/uploads/..."]` |
 
 **请求示例：**
 ```bash
@@ -224,7 +224,7 @@ Content-Type: application/json
 {
   "projectName": "项目B",
   "date": "2025-11-07",
-  "images": ["/public/uploads/2025-11-07/1/image2.jpg"]
+  "images": ["/uploads/2025-11-07/1/image2.jpg"]
 }
 ```
 
@@ -237,7 +237,7 @@ Content-Type: application/json
     "id": 1,
     "projectName": "项目B",
     "date": "2025-11-07",
-    "images": ["/public/uploads/2025-11-07/1/image2.jpg"],
+    "images": ["/uploads/2025-11-07/1/image2.jpg"],
     "createdAt": "2025-11-06T10:00:00.000Z",
     "updatedAt": "2025-11-07T10:00:00.000Z"
   }
@@ -446,8 +446,8 @@ async function deleteCase(id: number) {
    - 管理员使用 Admin Token（通过 `/api/admin/auth/login` 获取）
 
 2. **图片地址：**
-   - `images` 字段返回的是相对路径，如 `/public/uploads/...`
-   - 前端需要拼接完整的域名和路径前缀（如：`https://dev.dachengguoji.com.cn/landport/public/uploads/...`）
+- `images` 字段返回的是相对路径，如 `/uploads/...`
+- 前端需要拼接完整的域名和路径前缀（如：`https://dev.dachengguoji.com.cn/uploads/...`）
 
 3. **日期格式：**
    - 所有日期字段使用 `YYYY-MM-DD` 格式
