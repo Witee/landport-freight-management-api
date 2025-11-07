@@ -23,7 +23,7 @@
     "tsc": "tsc",
     "clean": "tsc -b --clean",
     "prepublishOnly": "npm run clean && npm run tsc",
-    "generate-token": "docker run --rm -v $(pwd):/code -w /code node:22 sh -c 'npm install --registry=https://registry.npm.taobao.org && node scripts/generate-website-token.mjs | tee /tmp/token-output.txt && ONLY_TOKEN=true node scripts/generate-website-token.mjs > .env.website-token && cat /tmp/token-output.txt'"
+    "generate-token": "node scripts/generate-website-token.mjs"
   },
   "dependencies": {
     "@eggjs/scripts": "beta",

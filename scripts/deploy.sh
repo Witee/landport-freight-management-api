@@ -100,7 +100,7 @@ fi
 # 3. 更新 Token（如果需要）
 if [ "$SHOULD_UPDATE_TOKEN" = true ]; then
   echo "生成新的前端官网 Token..."
-  node scripts/generate-website-token.mjs > "$TOKEN_FILE" 2>&1 || {
+  npm run generate-token || {
     echo "错误: Token 生成失败"
     exit 1
   }
@@ -132,7 +132,7 @@ docker run -itd --name landport-app \
   -e REDIS_HOST=172.17.0.1 \
   -e UPLOAD_ROOT_DIR=/uploads \
   node:22 \
-  sh -c "cd /code && npm install --registry=https://registry.npm.taobao.org && npm run clean && npm run tsc && npm run docker"
+  sh -c "cd /code && npm install --registry=https://registry.npm.taobao.org && npm run clean && npm run tsc && npm run generate-token && npm run docker"
 
 # 7. 等待容器启动
 echo "4. 等待容器启动..."

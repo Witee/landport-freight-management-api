@@ -5,9 +5,18 @@
  * 
  * 该脚本生成一个长期有效的 JWT Token，供前端官网访问 /api/cases 接口使用。
  * Token 使用普通用户权限，有效期 1 年。
+ * 
+ * 默认情况下会自动生成 .env.website-token 文件。
+ * 如果设置了 SKIP_FILE 环境变量为 'true'，则不会生成文件。
  */
 
 import jwt from 'jsonwebtoken';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // JWT 配置（与 config.default.ts 中的配置一致）
 const JWT_SECRET = 'G7xtJPiwG';
@@ -55,4 +64,16 @@ console.log('前端环境变量配置示例:');
 console.log('.env:');
 console.log(`WEBSITE_TOKEN=${token}`);
 console.log('\n提示: 请妥善保管此 Token，不要提交到代码仓库\n');
+
+// 自动生成 .env.website-token 文件
+if (process.env.SKIP_FILE !== 'true') {
+  const tokenFile = path.join(__dirname, '..', '.env.website-token');
+  try {
+    fs.writeFileSync(tokenFile, token, 'utf8');
+    console.log(`✓ 已自动生成 .env.website-token 文件: ${tokenFile}`);
+  } catch (error) {
+    console.error(`✗ 生成 .env.website-token 文件失败: ${error.message}`);
+    process.exit(1);
+  }
+}
 

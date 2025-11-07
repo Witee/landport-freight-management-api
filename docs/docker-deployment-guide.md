@@ -27,7 +27,7 @@ docker run -itd --name landport-app \
   -e REDIS_HOST=172.17.0.1 \
   -e UPLOAD_ROOT_DIR=/uploads \
   node:22 \
-  sh -c "cd /code && npm install --registry=https://registry.npm.taobao.org && npm run clean && npm run tsc && node scripts/generate-website-token.mjs > /code/.env.website-token && npm run docker"
+  sh -c "cd /code && npm install --registry=https://registry.npm.taobao.org && npm run clean && npm run tsc && npm run generate-token && npm run docker"
 ```
 
 ### 2. 生成 Token 并保存
@@ -54,7 +54,7 @@ cat /data/landport-freight-management-api/.env.website-token
 
 ```bash
 cd /data/landport-freight-management-api
-node scripts/generate-website-token.mjs > .env.website-token
+npm run generate-token
 ```
 
 ### 2. 修改 Docker 启动命令（可选）
@@ -73,7 +73,7 @@ docker run -itd --name landport-app \
   -e REDIS_HOST=172.17.0.1 \
   -e UPLOAD_ROOT_DIR=/uploads \
   node:22 \
-  sh -c "cd /code && npm install --registry=https://registry.npm.taobao.org && npm run clean && npm run tsc && npm run docker"
+  sh -c "cd /code && npm install --registry=https://registry.npm.taobao.org && npm run clean && npm run tsc && npm run generate-token && npm run docker"
 ```
 
 **注意：** 后端应用不需要读取 Token，Token 是给前端使用的。挂载 Token 文件只是为了方便在容器中查看。
@@ -86,7 +86,7 @@ docker run -itd --name landport-app \
 
 ```bash
 cd /data/landport-freight-management-api
-TOKEN=$(node scripts/generate-website-token.mjs 2>&1 | grep -A 1 "^Token:" | tail -1 | tr -d ' ')
+TOKEN=$(ONLY_TOKEN=true npm run generate-token)
 ```
 
 ### 2. 通过环境变量传递
@@ -103,7 +103,7 @@ docker run -itd --name landport-app \
   -e UPLOAD_ROOT_DIR=/uploads \
   -e WEBSITE_TOKEN="$TOKEN" \
   node:22 \
-  sh -c "cd /code && npm install --registry=https://registry.npm.taobao.org && npm run clean && npm run tsc && npm run docker"
+  sh -c "cd /code && npm install --registry=https://registry.npm.taobao.org && npm run clean && npm run tsc && npm run generate-token && npm run docker"
 ```
 
 ### 3. 在容器中查看 Token
@@ -133,7 +133,7 @@ echo "=== 开始部署 ==="
 # 1. 生成 Token
 echo "1. 生成前端官网 Token..."
 cd /data/landport-freight-management-api
-node scripts/generate-website-token.mjs > .env.website-token
+npm run generate-token
 
 # 2. 显示 Token（提供给前端开发者）
 echo ""
@@ -158,7 +158,7 @@ docker run -itd --name landport-app \
   -e REDIS_HOST=172.17.0.1 \
   -e UPLOAD_ROOT_DIR=/uploads \
   node:22 \
-  sh -c "cd /code && npm install --registry=https://registry.npm.taobao.org && npm run clean && npm run tsc && npm run docker"
+  sh -c "cd /code && npm install --registry=https://registry.npm.taobao.org && npm run clean && npm run tsc && npm run generate-token && npm run docker"
 
 echo ""
 echo "=== 部署完成 ==="
@@ -185,7 +185,7 @@ chmod +x scripts/deploy.sh
 cd /data/landport-freight-management-api
 
 # 2. 生成 Token（可选，如果已存在可跳过）
-node scripts/generate-website-token.mjs > .env.website-token
+npm run generate-token
 
 # 3. 显示 Token（提供给前端开发者）
 echo "=== 前端官网 Token ==="
@@ -206,7 +206,7 @@ docker run -itd --name landport-app \
   -e REDIS_HOST=172.17.0.1 \
   -e UPLOAD_ROOT_DIR=/uploads \
   node:22 \
-  sh -c "cd /code && npm install --registry=https://registry.npm.taobao.org && npm run clean && npm run tsc && npm run docker"
+  sh -c "cd /code && npm install --registry=https://registry.npm.taobao.org && npm run clean && npm run tsc && npm run generate-token && npm run docker"
 
 # 5. 查看容器日志
 docker logs -f landport-app
@@ -229,7 +229,7 @@ docker exec landport-app cat /code/.env.website-token
 ### 方法 3：在容器中重新生成
 
 ```bash
-docker exec landport-app node /code/scripts/generate-website-token.mjs
+docker exec landport-app npm run generate-token
 ```
 
 ## 注意事项
@@ -274,7 +274,7 @@ docker exec landport-app node /code/scripts/generate-website-token.mjs
 
 **解决方案：**
 1. 检查容器日志：`docker logs landport-app`
-2. 手动在容器中运行脚本：`docker exec landport-app node /code/scripts/generate-website-token.mjs`
+2. 手动在容器中运行脚本：`docker exec landport-app npm run generate-token`
 3. 检查文件权限
 
 ### 问题 3: 无法访问 Token 文件
