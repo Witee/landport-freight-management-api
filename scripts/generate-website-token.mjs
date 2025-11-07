@@ -65,10 +65,10 @@ console.log('.env:');
 console.log(`WEBSITE_TOKEN=${token}`);
 console.log('\n提示: 请妥善保管此 Token，不要提交到代码仓库\n');
 
-// 自动生成 .env.website-token 文件，同时更新 nginx.webtoken 配置
+// 自动生成 .env.website-token 文件，同时更新 nginx webtoken 配置
 if (process.env.SKIP_FILE !== 'true') {
   const tokenFile = path.join(__dirname, '..', '.env.website-token');
-  const nginxConfigFile = path.join(__dirname, '..', 'config', 'nginx.webtoken.conf');
+  const nginxConfigFile = path.join(__dirname, '..', '.nginx.website-token.conf');
   const nginxConfigContent = `proxy_set_header Authorization "Bearer ${token}";\n`;
 
   try {
@@ -83,7 +83,7 @@ if (process.env.SKIP_FILE !== 'true') {
     fs.writeFileSync(nginxConfigFile, nginxConfigContent, 'utf8');
     console.log(`✓ 已自动更新 nginx 配置文件: ${nginxConfigFile}`);
   } catch (error) {
-    console.error(`✗ 更新 nginx.webtoken 配置失败: ${error.message}`);
+    console.error(`✗ 更新 nginx website-token 配置失败: ${error.message}`);
     process.exit(1);
   }
 }
