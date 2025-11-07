@@ -26,3 +26,4 @@ config/**/*.map
 .env
 .env.local
 .env.website-token
+config/nginx.webtoken.conf
