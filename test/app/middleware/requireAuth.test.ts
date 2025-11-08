@@ -40,7 +40,7 @@ describe('requireAuth Middleware', () => {
       const res = await app
         .httpRequest()
         .get('/api/lpwx/goods/list')
-        .set('Authorization', `Bearer ${userToken}`);
+        .set('X-Token', userToken);
 
       // 如果 token 有效，应该能够访问（即使没有数据也会返回 200）
       expect(res.status).not.toBe(401);

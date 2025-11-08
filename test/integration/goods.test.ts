@@ -54,13 +54,13 @@ describe('货物接口权限集成测试', () => {
 
     adminToken = (app as any).jwt.sign(
       { u: adminUser.id },
-      (app.config as any).adminJwt.secret,
+      (app.config as any).dcJwt.secret,
       { expiresIn: '1h' }
     );
 
     sysAdminToken = (app as any).jwt.sign(
       { u: sysAdminUser.id },
-      (app.config as any).adminJwt.secret,
+      (app.config as any).dcJwt.secret,
       { expiresIn: '1h' }
     );
 
@@ -87,7 +87,7 @@ describe('货物接口权限集成测试', () => {
       const res = await app
         .httpRequest()
         .post('/api/lpwx/goods')
-        .set('Authorization', `Bearer ${userToken}`)
+        .set('X-Token', userToken)
         .send({
           name: '测试货物',
           status: 'collected',
@@ -102,8 +102,8 @@ describe('货物接口权限集成测试', () => {
     test('admin 应该可以访问所有货物列表', async () => {
       const res = await app
         .httpRequest()
-        .get('/api/lpwx/goods/list-all')
-        .set('Authorization', `Bearer ${adminToken}`);
+        .get('/api/dc/goods/list-all')
+        .set('X-Token', adminToken);
 
       // 需要先通过 requireAuth，然后检查权限
       // 由于 adminToken 是 dc 系统的 token，访问 lpwx 系统应该被拒绝
@@ -113,8 +113,8 @@ describe('货物接口权限集成测试', () => {
     test('sysAdmin 应该可以访问所有货物列表', async () => {
       const res = await app
         .httpRequest()
-        .get('/api/lpwx/goods/list-all')
-        .set('Authorization', `Bearer ${sysAdminToken}`);
+        .get('/api/dc/goods/list-all')
+        .set('X-Token', sysAdminToken);
 
       // 需要先通过 requireAuth，然后检查权限
       // 由于 sysAdminToken 是 dc 系统的 token，访问 lpwx 系统应该被拒绝

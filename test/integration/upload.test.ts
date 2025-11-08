@@ -51,13 +51,13 @@ describe('上传接口权限集成测试', () => {
 
     adminToken = (app as any).jwt.sign(
       { u: adminUser.id },
-      (app.config as any).adminJwt.secret,
+      (app.config as any).dcJwt.secret,
       { expiresIn: '1h' }
     );
 
     sysAdminToken = (app as any).jwt.sign(
       { u: sysAdminUser.id },
-      (app.config as any).adminJwt.secret,
+      (app.config as any).dcJwt.secret,
       { expiresIn: '1h' }
     );
 
@@ -74,7 +74,7 @@ describe('上传接口权限集成测试', () => {
       const res = await app
         .httpRequest()
         .post('/api/lpwx/upload/goods-image')
-        .set('Authorization', `Bearer ${userToken}`);
+        .set('X-Token', userToken);
 
       // 即使没有文件，也应该返回 400 而不是 401
       expect(res.status).not.toBe(401);
@@ -92,7 +92,7 @@ describe('上传接口权限集成测试', () => {
       const res = await app
         .httpRequest()
         .post('/api/dc/upload/goods-image')
-        .set('Authorization', `Bearer ${sysAdminToken}`);
+        .set('X-Token', sysAdminToken);
 
       // 即使没有文件，也应该返回 400 而不是 401
       expect(res.status).not.toBe(401);
@@ -102,7 +102,7 @@ describe('上传接口权限集成测试', () => {
       const res = await app
         .httpRequest()
         .post('/api/dc/upload/goods-image')
-        .set('Authorization', `Bearer ${adminToken}`);
+        .set('X-Token', adminToken);
 
       // 即使没有文件，也应该返回 400 而不是 401
       expect(res.status).not.toBe(401);
@@ -112,7 +112,7 @@ describe('上传接口权限集成测试', () => {
       const res = await app
         .httpRequest()
         .post('/api/dc/upload/goods-image')
-        .set('Authorization', `Bearer ${websiteToken}`);
+        .set('X-Token', websiteToken);
 
       expect(res.status).toBe(401);
     });
@@ -121,7 +121,7 @@ describe('上传接口权限集成测试', () => {
       const res = await app
         .httpRequest()
         .post('/api/dc/upload/goods-image')
-        .set('Authorization', `Bearer ${userToken}`);
+        .set('X-Token', userToken);
 
       expect(res.status).toBe(401);
     });

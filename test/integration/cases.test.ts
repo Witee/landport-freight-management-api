@@ -42,13 +42,13 @@ describe('案例接口权限集成测试', () => {
 
     sysAdminToken = (app as any).jwt.sign(
       { u: sysAdminUser.id },
-      (app.config as any).adminJwt.secret,
+      (app.config as any).dcJwt.secret,
       { expiresIn: '1h' }
     );
 
     adminToken = (app as any).jwt.sign(
       { u: adminUser.id },
-      (app.config as any).adminJwt.secret,
+      (app.config as any).dcJwt.secret,
       { expiresIn: '1h' }
     );
 
@@ -82,8 +82,10 @@ describe('案例接口权限集成测试', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.code).toBe(200);
-      expect(res.body.data.list).toBeDefined();
-      expect(Array.isArray(res.body.data.list)).toBe(true);
+      const assetHost = (app.config as any).assetHost.replace(/\/+$/, '');
+      const images = res.body.data.list.flatMap((item: any) => item.images || []);
+      expect(images).toContain(`${assetHost}/landport/uploads/test1.jpg`);
+      expect(images).toContain(`${assetHost}/landport/uploads/test2.jpg`);
     });
 
     test('website-token 访问 GET /api/dc/cases 应该支持分页参数', async () => {
@@ -118,7 +120,8 @@ describe('案例接口权限集成测试', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.code).toBe(200);
-      expect(res.body.data.projectName).toBeDefined();
+      const assetHost = (app.config as any).assetHost.replace(/\/+$/, '');
+      expect(res.body.data.images?.[0]).toBe(`${assetHost}/landport/uploads/test1.jpg`);
     });
 
     test('website-token 访问 GET /api/dc/cases/:id 不存在的案例ID应该返回404', async () => {
@@ -134,7 +137,7 @@ describe('案例接口权限集成测试', () => {
       const res = await app
         .httpRequest()
         .post('/api/dc/cases')
-        .set('Authorization', `Bearer ${websiteToken}`)
+        .set('X-Token', websiteToken)
         .send({
           projectName: 'website-token创建的项目',
           date: '2025-01-01',
@@ -148,7 +151,7 @@ describe('案例接口权限集成测试', () => {
       const res = await app
         .httpRequest()
         .put('/api/dc/cases/1')
-        .set('Authorization', `Bearer ${websiteToken}`)
+        .set('X-Token', websiteToken)
         .send({
           projectName: 'website-token更新的项目',
         });
@@ -160,7 +163,7 @@ describe('案例接口权限集成测试', () => {
       const res = await app
         .httpRequest()
         .delete('/api/dc/cases/1')
-        .set('Authorization', `Bearer ${websiteToken}`);
+        .set('X-Token', websiteToken);
 
       expect([401, 403]).toContain(res.status);
     });
@@ -186,7 +189,7 @@ describe('案例接口权限集成测试', () => {
       const res = await app
         .httpRequest()
         .post('/api/dc/cases')
-        .set('Authorization', `Bearer ${adminToken}`)
+        .set('X-Token', adminToken)
         .send({
           projectName: 'admin创建的项目',
           date: '2025-01-04',
@@ -226,7 +229,7 @@ describe('案例接口权限集成测试', () => {
       const res = await app
         .httpRequest()
         .put(`/api/dc/cases/${caseItem.id}`)
-        .set('Authorization', `Bearer ${adminToken}`)
+        .set('X-Token', adminToken)
         .send({
           projectName: 'admin更新的项目',
         });
@@ -261,7 +264,7 @@ describe('案例接口权限集成测试', () => {
       const res = await app
         .httpRequest()
         .delete(`/api/dc/cases/${caseItem.id}`)
-        .set('Authorization', `Bearer ${adminToken}`);
+        .set('X-Token', adminToken);
 
       expect(res.status).toBe(200);
       expect(res.body.code).toBe(200);

@@ -35,8 +35,8 @@ export default {
     secret: 'G7xtJPiwG',
     expiresIn: '7d',
   },
-  adminJwt: {
-    secret: 'AdminJwtSecret2025',
+  dcJwt: {
+    secret: 'DcJwtSecret2025',
     expiresIn: '30d',
   },
 };

@@ -53,9 +53,8 @@ describe('CaseController', () => {
     });
 
     // 生成 tokens（使用 jsonwebtoken 库以确保正确性）
-    sysAdminToken = jwt.sign({ u: sysAdminUser.id }, (app.config as any).adminJwt.secret, { expiresIn: '1h' });
-
-    adminToken = jwt.sign({ u: adminUser.id }, (app.config as any).adminJwt.secret, { expiresIn: '1h' });
+    sysAdminToken = jwt.sign({ u: sysAdminUser.id }, (app.config as any).dcJwt.secret, { expiresIn: '1h' });
+    adminToken = jwt.sign({ u: adminUser.id }, (app.config as any).dcJwt.secret, { expiresIn: '1h' });
 
     userToken = jwt.sign({ userId: userUser.id, role: userUser.role }, (app.config as any).jwt.secret, {
       expiresIn: '1h',
@@ -85,16 +84,20 @@ describe('CaseController', () => {
       expect(res.status).toBe(200);
       expect(res.body.code).toBe(200);
       expect(res.body.data.list).toBeDefined();
+      const assetHost = (app.config as any).assetHost.replace(/\/+$/, '');
+      const imageUrls = res.body.data.list.flatMap((item) => item.images || []);
+      expect(imageUrls).toContain(`${assetHost}/landport/uploads/test1.jpg`);
+      expect(imageUrls).toContain(`${assetHost}/landport/uploads/test2.jpg`);
     });
 
     test('普通用户 token 应该被拒绝（只有 website-token 和 admin token 可以访问）', async () => {
-      const res = await app.httpRequest().get('/api/dc/cases').set('Authorization', `Bearer ${userToken}`);
+      const res = await app.httpRequest().get('/api/dc/cases').set('X-Token', userToken);
 
       expect(res.status).toBe(401);
     });
 
     test('sysAdmin token 应该可以访问', async () => {
-      const res = await app.httpRequest().get('/api/dc/cases').set('Authorization', `Bearer ${sysAdminToken}`);
+      const res = await app.httpRequest().get('/api/dc/cases').set('X-Token', sysAdminToken);
 
       expect(res.status).toBe(200);
       expect(res.body.code).toBe(200);
@@ -114,6 +117,9 @@ describe('CaseController', () => {
       expect(res.status).toBe(200);
       expect(res.body.code).toBe(200);
       expect(res.body.data.projectName).toBeDefined();
+      const assetHost = (app.config as any).assetHost.replace(/\/+$/, '');
+      const firstImage = res.body.data.images?.[0];
+      expect(firstImage).toBe(`${assetHost}/landport/uploads/test1.jpg`);
     });
 
     test('无 token 应该被拒绝', async () => {
@@ -125,7 +131,7 @@ describe('CaseController', () => {
 
   describe('POST /api/dc/cases - 创建案例', () => {
     test('sysAdmin 应该可以创建', async () => {
-      const res = await app.httpRequest().post('/api/dc/cases').set('Authorization', `Bearer ${sysAdminToken}`).send({
+      const res = await app.httpRequest().post('/api/dc/cases').set('X-Token', sysAdminToken).send({
         projectName: 'sysAdmin创建的项目',
         date: '2025-01-03',
         images: [],
@@ -136,7 +142,7 @@ describe('CaseController', () => {
     });
 
     test('admin 应该可以创建', async () => {
-      const res = await app.httpRequest().post('/api/dc/cases').set('Authorization', `Bearer ${adminToken}`).send({
+      const res = await app.httpRequest().post('/api/dc/cases').set('X-Token', adminToken).send({
         projectName: 'admin创建的项目',
         date: '2025-01-04',
         images: [],
@@ -147,7 +153,7 @@ describe('CaseController', () => {
     });
 
     test('website-token 应该被拒绝', async () => {
-      const res = await app.httpRequest().post('/api/dc/cases').set('Authorization', `Bearer ${websiteToken}`).send({
+      const res = await app.httpRequest().post('/api/dc/cases').set('X-Token', websiteToken).send({
         projectName: 'website-token创建的项目',
         date: '2025-01-05',
         images: [],
@@ -157,7 +163,7 @@ describe('CaseController', () => {
     });
 
     test('普通用户 token 应该被拒绝', async () => {
-      const res = await app.httpRequest().post('/api/dc/cases').set('Authorization', `Bearer ${userToken}`).send({
+      const res = await app.httpRequest().post('/api/dc/cases').set('X-Token', userToken).send({
         projectName: 'user创建的项目',
         date: '2025-01-06',
         images: [],
@@ -179,7 +185,7 @@ describe('CaseController', () => {
 
   describe('PUT /api/dc/cases/:id - 更新案例', () => {
     test('sysAdmin 应该可以更新', async () => {
-      const res = await app.httpRequest().put('/api/dc/cases/1').set('Authorization', `Bearer ${sysAdminToken}`).send({
+      const res = await app.httpRequest().put('/api/dc/cases/1').set('X-Token', sysAdminToken).send({
         projectName: 'sysAdmin更新的项目',
       });
 
@@ -188,7 +194,7 @@ describe('CaseController', () => {
     });
 
     test('admin 应该可以更新', async () => {
-      const res = await app.httpRequest().put('/api/dc/cases/1').set('Authorization', `Bearer ${adminToken}`).send({
+      const res = await app.httpRequest().put('/api/dc/cases/1').set('X-Token', adminToken).send({
         projectName: 'admin更新的项目',
       });
 
@@ -196,8 +202,8 @@ describe('CaseController', () => {
       expect(res.body.code).toBe(200);
     });
 
-    test('website-token 应该被拒绝', async () => {
-      const res = await app.httpRequest().put('/api/dc/cases/1').set('Authorization', `Bearer ${websiteToken}`).send({
+    test('website-token 更新应该被拒绝', async () => {
+      const res = await app.httpRequest().put('/api/dc/cases/1').set('X-Token', websiteToken).send({
         projectName: 'website-token更新的项目',
       });
 
@@ -216,7 +222,7 @@ describe('CaseController', () => {
       const res = await app
         .httpRequest()
         .delete(`/api/dc/cases/${caseItem.id}`)
-        .set('Authorization', `Bearer ${sysAdminToken}`);
+        .set('X-Token', sysAdminToken);
 
       expect(res.status).toBe(200);
       expect(res.body.code).toBe(200);
@@ -232,13 +238,13 @@ describe('CaseController', () => {
       const res = await app
         .httpRequest()
         .delete(`/api/dc/cases/${caseItem.id}`)
-        .set('Authorization', `Bearer ${adminToken}`);
+        .set('X-Token', adminToken);
 
       expect(res.status).toBe(200);
       expect(res.body.code).toBe(200);
     });
 
-    test('website-token 应该被拒绝', async () => {
+    test('website-token 删除应该被拒绝', async () => {
       const caseItem = await CaseModel.create({
         projectName: '待删除项目3',
         date: '2025-01-10',
@@ -248,7 +254,7 @@ describe('CaseController', () => {
       const res = await app
         .httpRequest()
         .delete(`/api/dc/cases/${caseItem.id}`)
-        .set('Authorization', `Bearer ${websiteToken}`);
+        .set('X-Token', websiteToken);
 
       expect(res.status).toBe(401);
     });

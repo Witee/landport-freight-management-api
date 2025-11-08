@@ -6,6 +6,48 @@ import CaseFactory from '../model/Case.js';
 let __modelSyncedFlag = false;
 
 export default class CaseService extends Service {
+  private getAssetHost(): string {
+    const hostRaw = (this.app.config as any)?.assetHost;
+    if (!hostRaw) return '';
+    return String(hostRaw).trim().replace(/\/+$/, '');
+  }
+
+  private toPublicImageUrl(pathValue: any): any {
+    if (typeof pathValue !== 'string') return pathValue;
+    const original = pathValue.trim();
+    if (!original) return original;
+    if (/^https?:\/\//i.test(original)) {
+      return original;
+    }
+    const normalized = original.replace(/\\/g, '/');
+    const assetHost = this.getAssetHost();
+
+    const withLandport = normalized.startsWith('/landport/')
+      ? normalized
+      : normalized.startsWith('/uploads/')
+        ? `/landport${normalized}`
+        : normalized.startsWith('/public/uploads/')
+          ? `/landport${normalized.replace(/^\/public\//, '/')}`
+          : normalized.startsWith('/public/')
+            ? `/landport/uploads${normalized.replace(/^\/public/, '')}`
+            : normalized;
+
+    return assetHost ? `${assetHost}${withLandport}` : withLandport;
+  }
+
+  private formatImages(images: any): string[] {
+    if (!Array.isArray(images)) return [];
+    return images.map((img) => this.toPublicImageUrl(img));
+  }
+
+  private formatCaseItem(caseItem: any) {
+    const raw = caseItem && typeof caseItem.toJSON === 'function' ? caseItem.toJSON() : caseItem;
+    return {
+      ...raw,
+      images: this.formatImages(raw?.images),
+    };
+  }
+
   // 本地辅助：确保模型已加载，并在本地环境按需执行一次 sync
   private async loadModel() {
     const { ctx } = this;
@@ -27,38 +69,24 @@ export default class CaseService extends Service {
     if (!Array.isArray(images)) return [];
     return images.map((img: any) => {
       if (typeof img !== 'string') return img;
-      // 移除完整 URL，只保留相对路径
-      // 匹配格式：
-      // - https://domain.com/uploads/...
-      // - /uploads/...
-      // - https://domain.com/landport/public/uploads/...（旧格式，兼容处理）
-      // - https://domain.com/public/uploads/...（旧格式，兼容处理）
-      // - /landport/public/uploads/...（旧格式，兼容处理）
-      // - /public/uploads/...（旧格式，兼容处理）
       let normalized = img.trim();
-      
-      // 移除协议和域名部分（如果存在）
+
       normalized = normalized.replace(/^https?:\/\/[^/]+/i, '');
-      
-      // 移除 /landport 前缀（如果存在）
+
       normalized = normalized.replace(/^\/landport/, '');
-      
-      // 优先处理新版路径
+
       if (normalized.startsWith('/uploads/')) {
         return normalized;
       }
-      
-      // 兼容旧路径（/public/uploads/xxx）
+
       if (normalized.startsWith('/public/uploads/')) {
         return normalized.replace(/^\/public\/uploads\//, '/uploads/');
       }
 
-      // 兼容旧路径（/public/xxx）
       if (normalized.startsWith('/public/')) {
         return normalized.replace(/^\/public\//, '/uploads/');
       }
-      
-      // 如果无法识别，返回原值（可能是旧数据格式）
+
       return img;
     });
   }
@@ -71,7 +99,8 @@ export default class CaseService extends Service {
       date: caseData.date,
       images: this.normalizeImagePaths(Array.isArray(caseData.images) ? caseData.images : []),
     };
-    return await CaseModel.create(payload);
+    const created = await CaseModel.create(payload);
+    return this.formatCaseItem(created);
   }
 
   // 更新案例
@@ -94,7 +123,8 @@ export default class CaseService extends Service {
     if (caseData.images !== undefined) {
       updateData.images = this.normalizeImagePaths(Array.isArray(caseData.images) ? caseData.images : []);
     }
-    return await caseItem.update(updateData);
+    const updated = await caseItem.update(updateData);
+    return this.formatCaseItem(updated);
   }
 
   // 删除案例
@@ -115,17 +145,14 @@ export default class CaseService extends Service {
   // 获取案例列表
   async getCaseList(query: any) {
     const { page = 1, pageSize = 10, keyword, startDate, endDate } = query;
-    // 强制转换分页参数为数字，避免 SQL 语法错误
     const pageNum = Number(page) || 1;
     const pageSizeNum = Number(pageSize) || 10;
     const where: any = {};
 
-    // 关键词搜索（项目名称）
     if (keyword) {
       where.projectName = { [Op.like]: `%${keyword}%` };
     }
 
-    // 日期范围筛选
     if (startDate || endDate) {
       where.date = {};
       if (startDate) {
@@ -144,8 +171,10 @@ export default class CaseService extends Service {
       order: [['date', 'DESC'], ['createdAt', 'DESC']],
     });
 
+    const formatted = rows.map((row) => this.formatCaseItem(row));
+
     return {
-      list: rows,
+      list: formatted,
       pagination: {
         page: pageNum,
         pageSize: pageSizeNum,
@@ -165,7 +194,7 @@ export default class CaseService extends Service {
     if (!caseItem) {
       ctx.throw(404, '案例不存在');
     }
-    return caseItem;
+    return this.formatCaseItem(caseItem);
   }
 }
 

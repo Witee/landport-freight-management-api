@@ -58,13 +58,13 @@ describe('权限控制集成测试', () => {
 
     dcSysAdminToken = (app as any).jwt.sign(
       { u: dcSysAdminUser.id },
-      (app.config as any).adminJwt.secret,
+      (app.config as any).dcJwt.secret,
       { expiresIn: '1h' }
     );
 
     _dcAdminToken = (app as any).jwt.sign(
       { u: dcAdminUser.id },
-      (app.config as any).adminJwt.secret,
+      (app.config as any).dcJwt.secret,
       { expiresIn: '1h' }
     );
 
@@ -136,7 +136,7 @@ describe('权限控制集成测试', () => {
       const res = await app
         .httpRequest()
         .get('/api/dc/cases')
-        .set('Authorization', `Bearer ${lpwxToken}`);
+        .set('X-Token', lpwxToken);
       expect(res.status).toBe(401);
     });
 
@@ -144,7 +144,7 @@ describe('权限控制集成测试', () => {
       const res = await app
         .httpRequest()
         .post('/api/dc/upload/goods-image')
-        .set('Authorization', `Bearer ${lpwxToken}`);
+        .set('X-Token', lpwxToken);
       expect(res.status).toBe(401);
     });
 
@@ -152,7 +152,7 @@ describe('权限控制集成测试', () => {
       const res = await app
         .httpRequest()
         .get('/api/lpwx/goods/list')
-        .set('Authorization', `Bearer ${dcSysAdminToken}`);
+        .set('X-Token', dcSysAdminToken);
       expect(res.status).toBe(401);
     });
 
@@ -160,7 +160,7 @@ describe('权限控制集成测试', () => {
       const res = await app
         .httpRequest()
         .post('/api/lpwx/upload/goods-image')
-        .set('Authorization', `Bearer ${dcSysAdminToken}`);
+        .set('X-Token', dcSysAdminToken);
       expect(res.status).toBe(401);
     });
   });
@@ -188,7 +188,7 @@ describe('权限控制集成测试', () => {
       const res = await app
         .httpRequest()
         .post('/api/dc/cases')
-        .set('Authorization', `Bearer ${websiteToken}`)
+        .set('X-Token', websiteToken)
         .send({
           projectName: '测试项目',
           date: '2025-01-01',
@@ -201,7 +201,7 @@ describe('权限控制集成测试', () => {
       const res = await app
         .httpRequest()
         .put('/api/dc/cases/1')
-        .set('Authorization', `Bearer ${websiteToken}`)
+        .set('X-Token', websiteToken)
         .send({
           projectName: '测试项目',
         });
@@ -212,7 +212,7 @@ describe('权限控制集成测试', () => {
       const res = await app
         .httpRequest()
         .delete('/api/dc/cases/1')
-        .set('Authorization', `Bearer ${websiteToken}`);
+        .set('X-Token', websiteToken);
       expect(res.status).toBe(401);
     });
 
@@ -220,7 +220,7 @@ describe('权限控制集成测试', () => {
       const res = await app
         .httpRequest()
         .post('/api/dc/upload/goods-image')
-        .set('Authorization', `Bearer ${websiteToken}`);
+        .set('X-Token', websiteToken);
       expect(res.status).toBe(401);
     });
 
@@ -243,7 +243,7 @@ describe('权限控制集成测试', () => {
       const res = await app
         .httpRequest()
         .get('/api/lpwx/goods/list')
-        .set('Authorization', `Bearer ${websiteToken}`);
+        .set('X-Token', websiteToken);
       expect(res.status).toBe(401);
     });
 
@@ -251,7 +251,7 @@ describe('权限控制集成测试', () => {
       const res = await app
         .httpRequest()
         .post('/api/lpwx/upload/goods-image')
-        .set('Authorization', `Bearer ${websiteToken}`);
+        .set('X-Token', websiteToken);
       expect(res.status).toBe(401);
     });
 

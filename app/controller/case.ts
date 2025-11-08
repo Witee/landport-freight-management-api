@@ -16,19 +16,10 @@ export default class CaseController extends Controller {
       query
     );
     const result = await ctx.service.caseService.getCaseList(query);
-    // 兜底：images 字段为 null 时转为空数组，避免前端判空麻烦
-    const normalized = {
-      ...result,
-      list: (result.list || []).map((item: any) => {
-        const j = item && item.toJSON ? item.toJSON() : item;
-        j.images = Array.isArray(j.images) ? j.images : [];
-        return j;
-      }),
-    };
     ctx.body = {
       code: 200,
       message: '获取成功',
-      data: normalized,
+      data: result,
     };
   }
 
@@ -37,22 +28,20 @@ export default class CaseController extends Controller {
     const { ctx } = this;
     const id = ctx.params && ctx.params.id;
     const caseItem = await ctx.service.caseService.getCaseDetail(Number(id));
-    const j = caseItem && (caseItem as any).toJSON ? (caseItem as any).toJSON() : caseItem;
-    j.images = Array.isArray(j.images) ? j.images : [];
     ctx.body = {
       code: 200,
       message: '获取成功',
-      data: j,
+      data: caseItem,
     };
   }
 
   // 创建案例（仅 sysAdmin 或 admin）
   async create() {
     const { ctx } = this;
-    // 检查管理员权限（通过dcAuth的都是sysAdmin或admin）
-    const adminUser = ctx.state && ctx.state.adminUser;
-    const role = adminUser?.role;
-    if (!adminUser || (role !== 'sysAdmin' && role !== 'admin')) {
+    // 检查管理员权限（通过 DC token 校验的都是 sysAdmin 或 admin）
+    const dcUser = ctx.state && ctx.state.dcUser;
+    const role = dcUser?.role;
+    if (!dcUser || (role !== 'sysAdmin' && role !== 'admin')) {
       ctx.throw(403, '需要管理员权限');
     }
     const body = ctx.request.body;
@@ -73,17 +62,17 @@ export default class CaseController extends Controller {
     ctx.body = {
       code: 200,
       message: '创建成功',
-      data: caseItem && typeof caseItem.toJSON === 'function' ? caseItem.toJSON() : caseItem,
+      data: caseItem,
     };
   }
 
   // 更新案例（仅 sysAdmin 或 admin）
   async update() {
     const { ctx } = this;
-    // 检查管理员权限（通过dcAuth的都是sysAdmin或admin）
-    const adminUser = ctx.state && ctx.state.adminUser;
-    const role = adminUser?.role;
-    if (!adminUser || (role !== 'sysAdmin' && role !== 'admin')) {
+    // 检查管理员权限（通过 DC token 校验的都是 sysAdmin 或 admin）
+    const dcUser = ctx.state && ctx.state.dcUser;
+    const role = dcUser?.role;
+    if (!dcUser || (role !== 'sysAdmin' && role !== 'admin')) {
       ctx.throw(403, '需要管理员权限');
     }
     const body = ctx.request.body;
@@ -110,17 +99,17 @@ export default class CaseController extends Controller {
     ctx.body = {
       code: 200,
       message: '更新成功',
-      data: caseItem && typeof caseItem.toJSON === 'function' ? caseItem.toJSON() : caseItem,
+      data: caseItem,
     };
   }
 
   // 删除案例（仅 sysAdmin 或 admin）
   async delete() {
     const { ctx } = this;
-    // 检查管理员权限（通过dcAuth的都是sysAdmin或admin）
-    const adminUser = ctx.state && ctx.state.adminUser;
-    const role = adminUser?.role;
-    if (!adminUser || (role !== 'sysAdmin' && role !== 'admin')) {
+    // 检查管理员权限（通过 DC token 校验的都是 sysAdmin 或 admin）
+    const dcUser = ctx.state && ctx.state.dcUser;
+    const role = dcUser?.role;
+    if (!dcUser || (role !== 'sysAdmin' && role !== 'admin')) {
       ctx.throw(403, '需要管理员权限');
     }
     const id = ctx.params && ctx.params.id;

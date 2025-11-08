@@ -194,7 +194,7 @@ const main = async () => {
       ? results.uploadMultiple.data.data.map((x) => x.url)
       : [];
 
-    const expectedPart = `/uploads/${dateDir}/${userId}/`;
+    const expectedPart = `/landport/uploads/${dateDir}/${userId}/`;
 
     const summary = Object.fromEntries(
       Object.entries(results).map(([k, v]) => [

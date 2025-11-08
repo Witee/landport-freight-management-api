@@ -69,7 +69,7 @@ console.log('\n提示: 请妥善保管此 Token，不要提交到代码仓库\n'
 if (process.env.SKIP_FILE !== 'true') {
   const tokenFile = path.join(__dirname, '..', '.env.website-token');
   const nginxConfigFile = path.join(__dirname, '..', '.nginx.website-token.conf');
-  const nginxConfigContent = `proxy_set_header Authorization "Bearer ${token}";\n`;
+  const nginxConfigContent = `set $website_token "Bearer ${token}";\n`;
 
   try {
     fs.writeFileSync(tokenFile, token, 'utf8');

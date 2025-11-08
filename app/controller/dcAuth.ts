@@ -54,9 +54,9 @@ export default class DcAuthController extends Controller {
     // 颁发 JWT token（使用最短格式：只存储用户ID，role根据实际用户role设置）
     const token = (app as any).jwt.sign(
       { u: user.id },
-      (app.config as any).adminJwt.secret,
+      (app.config as any).dcJwt.secret,
       {
-        expiresIn: (app.config as any).adminJwt.expiresIn,
+        expiresIn: (app.config as any).dcJwt.expiresIn,
       }
     );
 

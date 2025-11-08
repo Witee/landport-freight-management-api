@@ -43,22 +43,23 @@ export default class UploadController extends Controller {
         const goodsId = Number(goodsIdRaw);
         if (Number.isFinite(goodsId) && goodsId > 0 && ctx.state?.user?.userId) {
           try {
-            await ctx.service.goodsService.addGoodsImages(goodsId, [result.url], ctx.state.user.userId);
+            const storeUrl = result.relativeUrl || result.url;
+            await ctx.service.goodsService.addGoodsImages(goodsId, [storeUrl], ctx.state.user.userId);
           } catch (e: any) {
             // 不影响上传主流程，失败仅记录日志
             ctx.logger.warn('绑定货物图片失败 goodsId=%s error=%s', goodsId, (e && e.message) || e);
           }
         }
       }
-
-      ctx.body = {
+      this.sendJsonResponse(ctx, {
         code: 200,
         message: '上传成功',
         data: {
           url: result.url,
+          relativeUrl: result.relativeUrl,
           filename: result.filename,
         },
-      };
+      });
     } catch (error: any) {
       ctx.logger.error('文件上传失败:', error);
       if (error && (error.status || error.statusCode)) {
@@ -105,9 +106,13 @@ export default class UploadController extends Controller {
     // 直接拷贝临时文件到目标路径，避免流事件的不确定性
     await fs.promises.copyFile(file.filepath, targetPath);
 
-    // 统一使用以 /uploads 为前缀的对外可访问 URL
-    const urlPath = `/uploads/${subDir.replace(/\\/g, '/')}/${filename}`;
-    return { url: urlPath, filename };
+    const assetHostRaw = (appCfg.assetHost && String(appCfg.assetHost).trim()) || '';
+    const assetHost = assetHostRaw.replace(/\/+$/, '');
+
+    const relativeUrl = `/uploads/${subDir.replace(/\\/g, '/')}/${filename}`;
+    const publicPath = `/landport${relativeUrl}`;
+    const fullUrl = assetHost ? `${assetHost}${publicPath}` : publicPath;
+    return { url: fullUrl, relativeUrl, publicPath, filename };
   }
 
   /**
@@ -135,7 +140,8 @@ export default class UploadController extends Controller {
         // 批量情况下也尝试绑定
         if (goodsId && Number.isFinite(goodsId) && goodsId > 0 && ctx.state?.user?.userId) {
           try {
-            await ctx.service.goodsService.addGoodsImages(goodsId, [res.url], ctx.state.user.userId);
+            const storeUrl = res.relativeUrl || res.url;
+            await ctx.service.goodsService.addGoodsImages(goodsId, [storeUrl], ctx.state.user.userId);
           } catch (e: any) {
             ctx.logger.warn('批量绑定货物图片失败 goodsId=%s error=%s', goodsId, (e && e.message) || e);
           }
@@ -146,11 +152,11 @@ export default class UploadController extends Controller {
       const raw = await Promise.all(tasks);
       const results = raw.filter(Boolean) as any[];
 
-      ctx.body = {
+      this.sendJsonResponse(ctx, {
         code: 200,
         message: '上传成功',
         data: results,
-      };
+      });
     } catch (error: any) {
       ctx.logger.error('批量上传失败:', error);
       if (error && (error.status || error.statusCode)) {
@@ -163,7 +169,7 @@ export default class UploadController extends Controller {
   }
 
   /**
-   * 管理员上传货物图片（管理员，由 dcAuth 控制）
+   * 管理员上传货物图片（管理员，由 DC 权限控制）
    * 通过 User.role === 'sysAdmin' 或 'admin' 判断管理员
    */
   public async uploadGoodsImageAdmin() {
@@ -192,15 +198,15 @@ export default class UploadController extends Controller {
         ctx.throw(400, '图片大小不能超过 5MB');
       }
 
-      // 检查管理员权限（通过 dcAuth 的都是 sysAdmin 或 admin）
-      const adminUser = ctx.state && ctx.state.adminUser;
-      const role = adminUser?.role;
-      if (!adminUser || (role !== 'sysAdmin' && role !== 'admin')) {
+      // 检查管理员权限（通过 DC token 的都是 sysAdmin 或 admin）
+      const dcUser = ctx.state && ctx.state.dcUser;
+      const role = dcUser?.role;
+      if (!dcUser || (role !== 'sysAdmin' && role !== 'admin')) {
         ctx.throw(403, '需要管理员权限');
       }
 
-      // 计算用户ID（从 adminUser 获取）
-      const userId = adminUser.userId !== undefined ? adminUser.userId : adminUser.u;
+      // 计算用户ID（从 dcUser 获取）
+      const userId = dcUser.userId !== undefined ? dcUser.userId : dcUser.u;
       if (userId === undefined || userId === null) {
         ctx.throw(401, '未登录或令牌无效');
       }
@@ -208,14 +214,15 @@ export default class UploadController extends Controller {
       // 存储文件（本地示例：copyFile 更稳健）
       const result = await this.uploadToCloudStorage(file as any, String(userId));
 
-      ctx.body = {
+      this.sendJsonResponse(ctx, {
         code: 200,
         message: '上传成功',
         data: {
           url: result.url,
+          relativeUrl: result.relativeUrl,
           filename: result.filename,
         },
-      };
+      });
     } catch (error: any) {
       ctx.logger.error('文件上传失败:', error);
       if (error && (error.status || error.statusCode)) {
@@ -230,7 +237,7 @@ export default class UploadController extends Controller {
   }
 
   /**
-   * 管理员批量上传图片（管理员，由 dcAuth 控制）
+   * 管理员批量上传图片（管理员，由 DC 权限控制）
    * 通过 User.role === 'sysAdmin' 或 'admin' 判断管理员
    */
   public async uploadMultipleImagesAdmin() {
@@ -242,15 +249,15 @@ export default class UploadController extends Controller {
       const allowedExts = new Set(['.jpg', '.jpeg', '.png', '.gif']);
       const maxSize = 20 * 1024 * 1024;
 
-      // 检查管理员权限（通过 dcAuth 的都是 sysAdmin 或 admin）
-      const adminUser = ctx.state && ctx.state.adminUser;
-      const role = adminUser?.role;
-      if (!adminUser || (role !== 'sysAdmin' && role !== 'admin')) {
+      // 检查管理员权限（通过 DC token 的都是 sysAdmin 或 admin）
+      const dcUser = ctx.state && ctx.state.dcUser;
+      const role = dcUser?.role;
+      if (!dcUser || (role !== 'sysAdmin' && role !== 'admin')) {
         ctx.throw(403, '需要管理员权限');
       }
 
-      // 计算用户ID（从 adminUser 获取）
-      const userId = adminUser.userId !== undefined ? adminUser.userId : adminUser.u;
+      // 计算用户ID（从 dcUser 获取）
+      const userId = dcUser.userId !== undefined ? dcUser.userId : dcUser.u;
       if (userId === undefined || userId === null) {
         ctx.throw(401, '未登录或令牌无效');
       }
@@ -268,11 +275,11 @@ export default class UploadController extends Controller {
       const raw = await Promise.all(tasks);
       const results = raw.filter(Boolean) as any[];
 
-      ctx.body = {
+      this.sendJsonResponse(ctx, {
         code: 200,
         message: '上传成功',
         data: results,
-      };
+      });
     } catch (error: any) {
       ctx.logger.error('批量上传失败:', error);
       if (error && (error.status || error.statusCode)) {
@@ -282,5 +289,11 @@ export default class UploadController extends Controller {
     } finally {
       await ctx.cleanupRequestFiles();
     }
+  }
+
+  private sendJsonResponse(ctx, payload: any) {
+    const json = JSON.stringify(payload);
+    ctx.set('Content-Type', 'application/json; charset=utf-8');
+    ctx.body = Buffer.from(json, 'utf8');
   }
 }
