@@ -63,13 +63,15 @@ describe('案例接口权限集成测试', () => {
     await CaseModel.create({
       projectName: '测试案例1',
       date: '2025-01-01',
-    images: ['/uploads/test1.jpg'],
+      images: ['/uploads/test1.jpg'],
+      tags: ['冷链', '进口'],
     });
 
     await CaseModel.create({
       projectName: '测试案例2',
       date: '2025-01-02',
-    images: ['/uploads/test2.jpg'],
+      images: ['/uploads/test2.jpg'],
+      tags: ['散货'],
     });
   });
 
@@ -110,6 +112,20 @@ describe('案例接口权限集成测试', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.code).toBe(200);
+    });
+
+    test('website-token 访问 GET /api/dc/cases 应该支持 tags 筛选（多标签 OR）', async () => {
+      const res = await app
+        .httpRequest()
+        .get('/api/dc/cases')
+        .query({ tags: ['冷链', '散货'] })
+        .set('Authorization', `Bearer ${websiteToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.code).toBe(200);
+      const names = res.body.data.list.map((item: any) => item.projectName);
+      expect(names).toContain('测试案例1');
+      expect(names).toContain('测试案例2');
     });
 
     test('website-token 访问 GET /api/dc/cases/:id 应该允许（正常访问）', async () => {
@@ -179,10 +195,12 @@ describe('案例接口权限集成测试', () => {
           projectName: 'sysAdmin创建的项目',
           date: '2025-01-03',
           images: [],
+          tags: ['跨境'],
         });
 
       expect(res.status).toBe(200);
       expect(res.body.code).toBe(200);
+      expect(res.body.data.tags).toContain('跨境');
     });
 
     test('admin 应该可以创建案例', async () => {
@@ -194,10 +212,12 @@ describe('案例接口权限集成测试', () => {
           projectName: 'admin创建的项目',
           date: '2025-01-04',
           images: [],
+          tags: ['仓储'],
         });
 
       expect(res.status).toBe(200);
       expect(res.body.code).toBe(200);
+      expect(res.body.data.tags).toContain('仓储');
     });
 
     test('sysAdmin 应该可以更新案例', async () => {
@@ -213,10 +233,12 @@ describe('案例接口权限集成测试', () => {
         .set('Authorization', `Bearer ${sysAdminToken}`)
         .send({
           projectName: 'sysAdmin更新的项目',
+          tags: ['改造'],
         });
 
       expect(res.status).toBe(200);
       expect(res.body.code).toBe(200);
+      expect(res.body.data.tags).toContain('改造');
     });
 
     test('admin 应该可以更新案例', async () => {
@@ -232,10 +254,12 @@ describe('案例接口权限集成测试', () => {
         .set('X-Token', adminToken)
         .send({
           projectName: 'admin更新的项目',
+          tags: [],
         });
 
       expect(res.status).toBe(200);
       expect(res.body.code).toBe(200);
+      expect(Array.isArray(res.body.data.tags)).toBe(true);
     });
 
     test('sysAdmin 应该可以删除案例', async () => {

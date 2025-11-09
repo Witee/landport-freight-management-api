@@ -1,10 +1,35 @@
 import { Controller } from 'egg';
 
+const normalizeTagsParam = (input: unknown): string[] => {
+  if (!input) return [];
+  const collected: string[] = [];
+  const collect = (value: unknown) => {
+    if (typeof value === 'string') {
+      value
+        .split(',')
+        .map((segment) => segment.trim())
+        .filter(Boolean)
+        .forEach((segment) => collected.push(segment));
+    } else if (Array.isArray(value)) {
+      value.forEach(collect);
+    }
+  };
+  collect(input);
+  return Array.from(new Set(collected));
+};
+
 export default class CaseController extends Controller {
   // 获取案例列表（支持 website-token 访问，所有认证用户可访问）
   async list() {
     const { ctx } = this;
     const query = { ...ctx.query } as any;
+    const rawTagsInput = (ctx.queries as any)?.tags ?? query.tags;
+    const tags = normalizeTagsParam(rawTagsInput);
+    if (tags.length) {
+      query.tags = tags;
+    } else {
+      delete query.tags;
+    }
     (ctx.validate as any)(
       {
         page: { type: 'number', required: false, min: 1 },
@@ -12,6 +37,7 @@ export default class CaseController extends Controller {
         keyword: { type: 'string', required: false, allowEmpty: true },
         startDate: { type: 'string', required: false, allowEmpty: true },
         endDate: { type: 'string', required: false, allowEmpty: true },
+        tags: { type: 'array', required: false, itemType: 'string' },
       },
       query
     );
@@ -44,12 +70,19 @@ export default class CaseController extends Controller {
     if (!dcUser || (role !== 'sysAdmin' && role !== 'admin')) {
       ctx.throw(403, '需要管理员权限');
     }
-    const body = ctx.request.body;
+    const body = { ...ctx.request.body };
+    const normalizedTags = normalizeTagsParam(body.tags);
+    if (normalizedTags.length) {
+      body.tags = normalizedTags;
+    } else {
+      delete body.tags;
+    }
     (ctx.validate as any)(
       {
         projectName: { type: 'string', required: true, allowEmpty: false, max: 128 },
         date: { type: 'string', required: true, allowEmpty: false },
         images: { type: 'array', required: false },
+        tags: { type: 'array', required: false, itemType: 'string' },
       },
       body
     );
@@ -57,6 +90,7 @@ export default class CaseController extends Controller {
       projectName: body.projectName,
       date: body.date,
       images: Array.isArray(body.images) ? body.images : [],
+      tags: Array.isArray(body.tags) ? body.tags : undefined,
     };
     const caseItem = await ctx.service.caseService.createCase(caseData);
     ctx.body = {
@@ -75,12 +109,19 @@ export default class CaseController extends Controller {
     if (!dcUser || (role !== 'sysAdmin' && role !== 'admin')) {
       ctx.throw(403, '需要管理员权限');
     }
-    const body = ctx.request.body;
+    const body = { ...ctx.request.body };
+    const normalizedTags = normalizeTagsParam(body.tags);
+    if (normalizedTags.length) {
+      body.tags = normalizedTags;
+    } else if (body.tags !== undefined) {
+      body.tags = [];
+    }
     (ctx.validate as any)(
       {
         projectName: { type: 'string', required: false, allowEmpty: false, max: 128 },
         date: { type: 'string', required: false, allowEmpty: false },
         images: { type: 'array', required: false },
+        tags: { type: 'array', required: false, itemType: 'string' },
       },
       body
     );
@@ -94,6 +135,9 @@ export default class CaseController extends Controller {
     }
     if (body.images !== undefined) {
       caseData.images = Array.isArray(body.images) ? body.images : [];
+    }
+    if (body.tags !== undefined) {
+      caseData.tags = Array.isArray(body.tags) ? body.tags : [];
     }
     const caseItem = await ctx.service.caseService.updateCase(Number(id), caseData);
     ctx.body = {

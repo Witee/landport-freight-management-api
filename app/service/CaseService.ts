@@ -40,11 +40,48 @@ export default class CaseService extends Service {
     return images.map((img) => this.toPublicImageUrl(img));
   }
 
+  private normalizeTags(input: any): string[] {
+    if (!input) return [];
+    const collected: string[] = [];
+    const collect = (value: any) => {
+      if (typeof value === 'string') {
+        value
+          .split(',')
+          .map((segment) => segment.trim())
+          .filter(Boolean)
+          .forEach((segment) => collected.push(segment));
+      } else if (Array.isArray(value)) {
+        value.forEach(collect);
+      }
+    };
+    collect(input);
+    return Array.from(new Set(collected));
+  }
+
+  private formatTags(tags: any): string[] {
+    if (typeof tags === 'string') {
+      try {
+        const parsed = JSON.parse(tags);
+        if (Array.isArray(parsed)) {
+          return parsed
+            .map((item) => (typeof item === 'string' ? item.trim() : ''))
+            .filter(Boolean);
+        }
+      } catch {}
+    } else if (Array.isArray(tags)) {
+      return tags
+        .map((item) => (typeof item === 'string' ? item.trim() : ''))
+        .filter(Boolean);
+    }
+    return [];
+  }
+
   private formatCaseItem(caseItem: any) {
     const raw = caseItem && typeof caseItem.toJSON === 'function' ? caseItem.toJSON() : caseItem;
     return {
       ...raw,
       images: this.formatImages(raw?.images),
+      tags: this.formatTags(raw?.tags),
     };
   }
 
@@ -98,6 +135,10 @@ export default class CaseService extends Service {
       projectName: caseData.projectName,
       date: caseData.date,
       images: this.normalizeImagePaths(Array.isArray(caseData.images) ? caseData.images : []),
+      tags: (() => {
+        const normalized = this.normalizeTags(caseData.tags);
+        return normalized.length ? normalized : null;
+      })(),
     };
     const created = await CaseModel.create(payload);
     return this.formatCaseItem(created);
@@ -122,6 +163,10 @@ export default class CaseService extends Service {
     }
     if (caseData.images !== undefined) {
       updateData.images = this.normalizeImagePaths(Array.isArray(caseData.images) ? caseData.images : []);
+    }
+    if (caseData.tags !== undefined) {
+      const normalizedTags = this.normalizeTags(caseData.tags);
+      updateData.tags = normalizedTags.length ? normalizedTags : null;
     }
     const updated = await caseItem.update(updateData);
     return this.formatCaseItem(updated);
@@ -164,6 +209,31 @@ export default class CaseService extends Service {
     }
 
     const CaseModel = await this.loadModel();
+    const tagsFilter = this.normalizeTags(query?.tags);
+    if (tagsFilter.length) {
+      const rows = await CaseModel.findAll({
+        where,
+        order: [['date', 'DESC'], ['createdAt', 'DESC']],
+      });
+      const formattedAll = rows.map((row) => this.formatCaseItem(row));
+      const filtered = formattedAll.filter((item) => {
+        if (!Array.isArray(item.tags) || item.tags.length === 0) return false;
+        return item.tags.some((tag) => tagsFilter.includes(tag));
+      });
+      const total = filtered.length;
+      const start = (pageNum - 1) * pageSizeNum;
+      const paged = filtered.slice(start, start + pageSizeNum);
+      return {
+        list: paged,
+        pagination: {
+          page: pageNum,
+          pageSize: pageSizeNum,
+          total,
+          totalPages: Math.ceil(total / pageSizeNum),
+        },
+      };
+    }
+
     const { count, rows } = await CaseModel.findAndCountAll({
       where,
       limit: pageSizeNum,

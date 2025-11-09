@@ -12,6 +12,9 @@ export default defineConfig({
         singleFork: true,
       },
     },
+    sequence: {
+      concurrent: false,
+    },
   },
   esbuild: {
     target: 'node22',

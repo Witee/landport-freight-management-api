@@ -1,3 +1,4 @@
+// 达成国际货运官网案例表
 export default (app) => {
   const { STRING, INTEGER, DATE, JSON } = app.Sequelize;
   const Case = app.model.define(
@@ -17,6 +18,11 @@ export default (app) => {
         type: DATE,
         allowNull: false,
         comment: '日期',
+      },
+      tags: {
+        type: JSON,
+        allowNull: true,
+        comment: '案例标签列表（字符串数组）',
       },
       images: {
         type: JSON,

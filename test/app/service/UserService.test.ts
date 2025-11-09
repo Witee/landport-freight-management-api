@@ -16,16 +16,15 @@ describe('UserService', () => {
     UserModel = UserFactory(app as any);
     await UserModel.sync({ alter: false, force: false });
     
-    // 获取 UserService 实例
+    (app as any).model.User = UserModel;
     try {
       userService = await app.getEggObject(UserService);
-    } catch (error) {
-      // 如果无法通过 getEggObject 获取，直接实例化
-      // 确保 ctx.model.User 存在，以便 UserService 使用同一个 UserModel 实例
+    } catch {
       const mockCtx = {
         model: {
           User: UserModel,
         },
+        app,
       } as any;
       userService = new UserService({ app, ctx: mockCtx } as any);
     }
@@ -161,4 +160,3 @@ describe('UserService', () => {
     });
   });
 });
-

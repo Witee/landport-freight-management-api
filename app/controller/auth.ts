@@ -78,18 +78,21 @@ export default class AuthController extends Controller {
     }
 
     // 创建或查找用户
-    const _res = await UserModel.findOrCreate({
+    let user: any = await UserModel.findOne({
       where: { openid: finalOpenid },
-      defaults: {
+    });
+    let created = false;
+    if (!user) {
+      user = await UserModel.create({
+        openid: finalOpenid,
         nickname: finalNickname || '微信用户',
         avatar: finalAvatar || null,
         phone: phone || null,
         role: role || 'user',
         lastLoginAt: new Date(),
-      },
-    });
-    const user: any = _res[0];
-    const created: boolean = _res[1];
+      });
+      created = true;
+    }
     // 如果提供了新属性，则更新
     const needUpdate: any = {};
     // @ts-ignore

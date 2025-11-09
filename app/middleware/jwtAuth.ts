@@ -43,6 +43,15 @@ export default (_options, app) => {
 
     const extractBearer = (value: string) => value.replace(/^Bearer\s+/i, '').trim();
 
+    const getJwtToken = () => {
+      const headerToken = getHeader('x-token', 'X-Token');
+      if (headerToken) return headerToken;
+      const bearer = extractBearer(getHeader('authorization', 'Authorization'));
+      return bearer;
+    };
+
+    const getUserBearer = () => extractBearer(getHeader('authorization', 'Authorization'));
+
     const verifyToken = (token: string, secret: string) => {
       try {
         return app.jwt.verify(token, secret);
@@ -78,7 +87,7 @@ export default (_options, app) => {
 
     try {
       if (path.startsWith('/api/lpwx/')) {
-        const token = getHeader('x-token', 'X-Token');
+        const token = getJwtToken();
         if (!token) {
           setUserState({}, 'NoToken');
         } else {
@@ -89,21 +98,23 @@ export default (_options, app) => {
             setUserState({}, errName as string);
           }
         }
-      } else if (path === '/api/dc/cases' && method === 'GET') {
-        const auth = getHeader('authorization', 'Authorization');
-        const token = extractBearer(auth);
-        if (!token) {
+      } else if (path.startsWith('/api/dc/cases') && method === 'GET') {
+        const userToken = getUserBearer();
+        const dcTokenFromHeader = getHeader('x-token', 'X-Token');
+        const dcBearer = extractBearer(getHeader('authorization', 'Authorization'));
+        const dcToken = dcTokenFromHeader || (!userToken ? dcBearer : '');
+
+        if (!userToken) {
           setUserState({}, 'NoToken');
         } else {
           try {
-            const payload = verifyToken(token, jwtSecret);
+            const payload = verifyToken(userToken, jwtSecret);
             setUserState(payload);
           } catch (errName) {
             setUserState({}, errName as string);
           }
         }
 
-        const dcToken = getHeader('x-token', 'X-Token');
         if (dcToken) {
           try {
             const payload = verifyToken(dcToken, dcJwtSecret) as any;
@@ -116,9 +127,11 @@ export default (_options, app) => {
           } catch (errName) {
             setDcState({}, errName as string);
           }
+        } else {
+          setDcState({}, dcTokenFromHeader ? 'NoToken' : ctx.state?.dcTokenError);
         }
       } else if (path.startsWith('/api/dc/')) {
-        const token = getHeader('x-token', 'X-Token');
+        const token = getJwtToken();
         if (!token) {
           setDcState({}, 'NoToken');
         } else {
@@ -135,7 +148,7 @@ export default (_options, app) => {
           }
         }
       } else {
-        const token = getHeader('x-token', 'X-Token');
+        const token = getJwtToken();
         if (token) {
           try {
             const payload = verifyToken(token, jwtSecret);

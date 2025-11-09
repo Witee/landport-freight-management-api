@@ -6,9 +6,10 @@ let __userModelSynced = false;
 
 export default class UserService extends Service {
   private async loadUserModel() {
-    const { ctx, app } = this;
+    const { app, ctx } = this;
     const appAny = app as any;
-    const UserModel = (ctx.model as any)?.User || UserFactory(appAny);
+    const ctxUserModel = (ctx?.model as any)?.User;
+    const UserModel = ctxUserModel || (app.model as any)?.User || UserFactory(appAny);
     const shouldSync = app.config.env === 'local' && !!(app.config as any).sequelize?.sync;
     if (shouldSync && !__userModelSynced && UserModel?.sync) {
       await UserModel.sync();
@@ -23,7 +24,7 @@ export default class UserService extends Service {
   async checkPermission(userId: number | undefined, role: 'sysAdmin' | 'admin' | 'user' = 'admin'): Promise<boolean> {
     if (!userId) return false;
     const User = await this.loadUserModel();
-    const user = await User.findByPk(userId);
+    const user = await User.findByPk(userId, { raw: true });
     if (!user) return false;
     
     // 如果检查的是 sysAdmin 权限，只有 sysAdmin 用户可以
@@ -44,7 +45,7 @@ export default class UserService extends Service {
   async isSysAdmin(userId: number | undefined): Promise<boolean> {
     if (!userId) return false;
     const User = await this.loadUserModel();
-    const user = await User.findByPk(userId);
+    const user = await User.findByPk(userId, { raw: true });
     if (!user) return false;
     return user.role === 'sysAdmin';
   }

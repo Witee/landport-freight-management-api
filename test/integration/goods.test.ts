@@ -102,7 +102,7 @@ describe('货物接口权限集成测试', () => {
     test('admin 应该可以访问所有货物列表', async () => {
       const res = await app
         .httpRequest()
-        .get('/api/dc/goods/list-all')
+        .get('/api/lpwx/goods/list-all')
         .set('X-Token', adminToken);
 
       // 需要先通过 requireAuth，然后检查权限
@@ -113,7 +113,7 @@ describe('货物接口权限集成测试', () => {
     test('sysAdmin 应该可以访问所有货物列表', async () => {
       const res = await app
         .httpRequest()
-        .get('/api/dc/goods/list-all')
+        .get('/api/lpwx/goods/list-all')
         .set('X-Token', sysAdminToken);
 
       // 需要先通过 requireAuth，然后检查权限
