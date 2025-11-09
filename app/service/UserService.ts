@@ -9,7 +9,8 @@ export default class UserService extends Service {
     const { app, ctx } = this;
     const appAny = app as any;
     const ctxUserModel = (ctx?.model as any)?.User;
-    const UserModel = ctxUserModel || (app.model as any)?.User || UserFactory(appAny);
+    const appUserModel = (appAny.model as any)?.User;
+    const UserModel = ctxUserModel || appUserModel || UserFactory(appAny);
     const shouldSync = app.config.env === 'local' && !!(app.config as any).sequelize?.sync;
     if (shouldSync && !__userModelSynced && UserModel?.sync) {
       await UserModel.sync();
@@ -25,7 +26,10 @@ export default class UserService extends Service {
     if (!userId) return false;
     const User = await this.loadUserModel();
     const user = await User.findByPk(userId, { raw: true });
-    if (!user) return false;
+    if (!user) {
+      this.logger.warn('[UserService] checkPermission: user %s not found', userId);
+      return false;
+    }
     
     // 如果检查的是 sysAdmin 权限，只有 sysAdmin 用户可以
     if (role === 'sysAdmin') {

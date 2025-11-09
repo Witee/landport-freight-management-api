@@ -117,8 +117,7 @@ describe('案例接口权限集成测试', () => {
     test('website-token 访问 GET /api/dc/cases 应该支持 tags 筛选（多标签 OR）', async () => {
       const res = await app
         .httpRequest()
-        .get('/api/dc/cases')
-        .query({ tags: ['冷链', '散货'] })
+        .get('/api/dc/cases?tags=冷链,散货')
         .set('Authorization', `Bearer ${websiteToken}`);
 
       expect(res.status).toBe(200);

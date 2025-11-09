@@ -23,7 +23,7 @@ export default class CaseController extends Controller {
   async list() {
     const { ctx } = this;
     const query = { ...ctx.query } as any;
-    const rawTagsInput = (ctx.queries as any)?.tags ?? query.tags;
+    const rawTagsInput = typeof query.tags === 'string' ? query.tags : '';
     const tags = normalizeTagsParam(rawTagsInput);
     if (tags.length) {
       query.tags = tags;
