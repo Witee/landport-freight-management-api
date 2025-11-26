@@ -27,6 +27,22 @@ export default (app) => {
   router.patch('/lpwx/goods/:id/status', controller.goods.updateStatus);
   router.delete('/lpwx/goods/:id', controller.goods.delete);
 
+  // 车队管理相关
+  router.get('/lpwx/fleet/vehicles', controller.fleet.listVehicles);
+  router.get('/lpwx/fleet/vehicles/:id', controller.fleet.getVehicle);
+  router.post('/lpwx/fleet/vehicles', controller.fleet.createVehicle);
+  router.put('/lpwx/fleet/vehicles/:id', controller.fleet.updateVehicle);
+  router.delete('/lpwx/fleet/vehicles/:id', controller.fleet.deleteVehicle);
+  router.post('/lpwx/fleet/vehicles/:id/images', controller.fleet.uploadVehicleImage);
+  router.get('/lpwx/fleet/transport-records', controller.fleet.listTransportRecords);
+  router.get('/lpwx/fleet/transport-records/:id', controller.fleet.getTransportRecord);
+  router.post('/lpwx/fleet/transport-records', controller.fleet.createTransportRecord);
+  router.put('/lpwx/fleet/transport-records/:id', controller.fleet.updateTransportRecord);
+  router.delete('/lpwx/fleet/transport-records/:id', controller.fleet.deleteTransportRecord);
+  router.get('/lpwx/fleet/stats/overview', controller.fleet.getOverviewStats);
+  router.get('/lpwx/fleet/stats/reconciliation', controller.fleet.getReconciliationStats);
+  router.post('/lpwx/fleet/vehicles/:id/certificates/share-token', controller.fleet.generateShareToken);
+
   // ========== 第二套系统：达成货运代理官网相关接口 ==========
   // 前缀：dc
   // 权限：GET 由 website-token 控制，写操作由 /api/dc/auth/login 控制（通过 User.role 判断管理员）
@@ -44,6 +60,10 @@ export default (app) => {
   // 管理员文件上传（路径不体现 admin）
   router.post('/dc/upload/goods-image', controller.upload.uploadGoodsImageAdmin);
   router.post('/dc/upload/multiple-images', controller.upload.uploadMultipleImagesAdmin);
+
+  // ========== 公开接口（无需认证） ==========
+  // 证件分享接口
+  router.get('/public/fleet/certificates/:token', controller.fleet.getCertificatesByToken);
 
   // ========== 预留前缀：lp ==========
   // 用于未来陆港货运管理系统扩展

@@ -14,6 +14,10 @@ export default () => {
     ) {
       return await next();
     }
+    // 放行公开接口（证件分享）
+    if (path.startsWith('/api/public/fleet/certificates/')) {
+      return await next();
+    }
     // 放行认证相关接口
     if (path.startsWith('/api/lpwx/auth/')) {
       return await next();
