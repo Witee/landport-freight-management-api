@@ -1,6 +1,8 @@
 import { Controller } from 'egg';
 import fs from 'fs';
 import path from 'path';
+import * as bcrypt from 'bcryptjs';
+import UserFactory from '../model/User.js';
 
 // 金额字段列表
 const DECIMAL_FIELDS = [
@@ -53,6 +55,7 @@ export default class FleetController extends Controller {
         pageSize: { type: 'number', required: false, min: 1, max: 100 },
         startDate: { type: 'string', required: false, allowEmpty: true },
         endDate: { type: 'string', required: false, allowEmpty: true },
+        fleetId: { type: 'string', required: false, allowEmpty: true },
       },
       query
     );
@@ -372,6 +375,7 @@ export default class FleetController extends Controller {
       {
         startDate: { type: 'string', required: true, allowEmpty: false },
         endDate: { type: 'string', required: true, allowEmpty: false },
+        fleetId: { type: 'string', required: false, allowEmpty: true },
       },
       query
     );
@@ -403,7 +407,7 @@ export default class FleetController extends Controller {
     }
 
     const userId = ctx.state.user.userId;
-    const data = await ctx.service.fleetService.getOverviewStats(userId, { startDate, endDate });
+    const data = await ctx.service.fleetService.getOverviewStats(userId, { startDate, endDate, fleetId: query.fleetId });
     ctx.body = {
       code: 200,
       message: '获取成功',
@@ -431,6 +435,248 @@ export default class FleetController extends Controller {
     );
     const userId = ctx.state.user.userId;
     const data = await ctx.service.fleetService.getReconciliationStats(query, userId);
+    ctx.body = {
+      code: 200,
+      message: '获取成功',
+      data,
+    };
+  }
+
+  // ========== 车队管理 ==========
+
+  // 账号密码登录（车队管理）
+  async login() {
+    const { ctx, app } = this;
+    ctx.validate({
+      username: { type: 'string', required: true, allowEmpty: false },
+      password: { type: 'string', required: true, allowEmpty: false },
+    });
+
+    const { username, password } = ctx.request.body;
+
+    // 获取或加载 User 模型
+    const UserModel = (ctx.model as any)?.User || UserFactory(app as any);
+    // 本地环境按需同步，确保新增列（如 username、password）存在
+    try {
+      const syncConfig = (app.config as any).sequelize?.sync;
+      const shouldSync = app.config.env === 'local' && !!syncConfig;
+      if (shouldSync && UserModel?.sync) {
+        const syncOptions = typeof syncConfig === 'object' ? syncConfig : {};
+        await UserModel.sync(syncOptions);
+      }
+    } catch {}
+
+    // 查找用户
+    const user: any = await UserModel.findOne({
+      where: { username },
+    });
+
+    if (!user) {
+      ctx.throw(401, '用户名或密码错误');
+    }
+
+    // 验证密码
+    if (!user.password) {
+      ctx.throw(401, '该用户未设置密码');
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      ctx.throw(401, '用户名或密码错误');
+    }
+
+    // 更新最后登录时间
+    await user.update({ lastLoginAt: new Date() });
+
+    // 颁发 JWT token（使用 lpwx 系统的 jwt 配置，与微信小程序登录保持一致）
+    const token = (app as any).jwt.sign(
+      { userId: user.id, role: user.role },
+      (app.config as any).jwt.secret,
+      {
+        expiresIn: (app.config as any).jwt.expiresIn,
+      }
+    );
+
+    ctx.body = {
+      code: 200,
+      message: '登录成功',
+      data: {
+        token,
+        user: {
+          id: user.id,
+          username: user.username,
+          nickname: user.nickname,
+          avatar: user.avatar,
+          role: user.role,
+        },
+      },
+    };
+  }
+
+  // 获取车队列表
+  async listFleets() {
+    const { ctx } = this;
+    const userId = ctx.state.user.userId;
+    const data = await ctx.service.fleetService.getFleetList(userId);
+    ctx.body = {
+      code: 200,
+      message: '获取成功',
+      data,
+    };
+  }
+
+  // 创建车队
+  async createFleet() {
+    const { ctx } = this;
+    const body = ctx.request.body;
+    const validationPayload = buildValidationPayload(body);
+    (ctx.validate as any)(
+      {
+        name: { type: 'string', required: true, allowEmpty: false, max: 100 },
+        description: { type: 'string', required: false, allowEmpty: true },
+      },
+      validationPayload
+    );
+    const userId = ctx.state.user.userId;
+    const data = await ctx.service.fleetService.createFleet(body, userId);
+    ctx.body = {
+      code: 200,
+      message: '创建成功',
+      data,
+    };
+  }
+
+  // 获取车队详情
+  async getFleet() {
+    const { ctx } = this;
+    const id = Number(ctx.params && ctx.params.id);
+    if (!Number.isFinite(id) || id <= 0) {
+      ctx.throw(400, '无效的车队ID');
+    }
+    const userId = ctx.state.user.userId;
+    const data = await ctx.service.fleetService.getFleetDetail(id, userId);
+    ctx.body = {
+      code: 200,
+      message: '获取成功',
+      data,
+    };
+  }
+
+  // 更新车队信息
+  async updateFleet() {
+    const { ctx } = this;
+    const id = Number(ctx.params && ctx.params.id);
+    if (!Number.isFinite(id) || id <= 0) {
+      ctx.throw(400, '无效的车队ID');
+    }
+    const body = ctx.request.body;
+    const validationPayload = buildValidationPayload(body);
+    (ctx.validate as any)(
+      {
+        name: { type: 'string', required: false, allowEmpty: false, max: 100 },
+        description: { type: 'string', required: false, allowEmpty: true },
+      },
+      validationPayload
+    );
+    const userId = ctx.state.user.userId;
+    const data = await ctx.service.fleetService.updateFleet(id, body, userId);
+    ctx.body = {
+      code: 200,
+      message: '更新成功',
+      data,
+    };
+  }
+
+  // 删除车队
+  async deleteFleet() {
+    const { ctx } = this;
+    const id = Number(ctx.params && ctx.params.id);
+    if (!Number.isFinite(id) || id <= 0) {
+      ctx.throw(400, '无效的车队ID');
+    }
+    const userId = ctx.state.user.userId;
+    await ctx.service.fleetService.deleteFleet(id, userId);
+    ctx.body = {
+      code: 200,
+      message: '删除成功',
+    };
+  }
+
+  // 获取车队成员列表
+  async listFleetMembers() {
+    const { ctx } = this;
+    const id = Number(ctx.params && ctx.params.id);
+    if (!Number.isFinite(id) || id <= 0) {
+      ctx.throw(400, '无效的车队ID');
+    }
+    const userId = ctx.state.user.userId;
+    const data = await ctx.service.fleetService.getFleetMembers(id, userId);
+    ctx.body = {
+      code: 200,
+      message: '获取成功',
+      data,
+    };
+  }
+
+  // 添加车队成员
+  async addFleetMember() {
+    const { ctx } = this;
+    const id = Number(ctx.params && ctx.params.id);
+    if (!Number.isFinite(id) || id <= 0) {
+      ctx.throw(400, '无效的车队ID');
+    }
+    const body = ctx.request.body;
+    (ctx.validate as any)(
+      {
+        userId: { type: 'number', required: true, min: 1 },
+      },
+      body
+    );
+    const userId = ctx.state.user.userId;
+    const data = await ctx.service.fleetService.addFleetMember(id, body.userId, userId);
+    ctx.body = {
+      code: 200,
+      message: '添加成功',
+      data,
+    };
+  }
+
+  // 移除车队成员
+  async removeFleetMember() {
+    const { ctx } = this;
+    const id = Number(ctx.params && ctx.params.id);
+    const memberId = Number(ctx.params && (ctx.params as any).memberId);
+    if (!Number.isFinite(id) || id <= 0) {
+      ctx.throw(400, '无效的车队ID');
+    }
+    if (!Number.isFinite(memberId) || memberId <= 0) {
+      ctx.throw(400, '无效的成员ID');
+    }
+    const userId = ctx.state.user.userId;
+    await ctx.service.fleetService.removeFleetMember(id, memberId, userId);
+    ctx.body = {
+      code: 200,
+      message: '移除成功',
+    };
+  }
+
+  // 搜索用户
+  async searchUsers() {
+    const { ctx } = this;
+    const keyword = ctx.query.keyword as string;
+    const data = await ctx.service.fleetService.searchUsers(keyword);
+    ctx.body = {
+      code: 200,
+      message: '搜索成功',
+      data,
+    };
+  }
+
+  // 获取我的车队列表（用于下拉菜单）
+  async getMyFleets() {
+    const { ctx } = this;
+    const userId = ctx.state.user.userId;
+    const data = await ctx.service.fleetService.getFleetList(userId);
     ctx.body = {
       code: 200,
       message: '获取成功',

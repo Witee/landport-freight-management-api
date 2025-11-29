@@ -13,6 +13,11 @@ export default (app) => {
         allowNull: false,
         comment: '所属用户ID',
       },
+      fleetId: {
+        type: INTEGER.UNSIGNED,
+        allowNull: true,
+        comment: '所属车队ID（null表示个人车辆）',
+      },
       name: {
         type: STRING(100),
         allowNull: true,

@@ -3,6 +3,8 @@ import { Op, literal } from 'sequelize';
 import VehicleFactory from '../model/Vehicle.js';
 import TransportRecordFactory from '../model/TransportRecord.js';
 import UserFactory from '../model/User.js';
+import FleetFactory from '../model/Fleet.js';
+import FleetMemberFactory from '../model/FleetMember.js';
 
 // 本地进程内标记：避免重复 sync（仅用于 local 环境开发）
 let __modelsSyncedFlag = false;
@@ -39,16 +41,6 @@ export default class FleetService extends Service {
     return assetHost ? `${assetHost}${withLandport}` : withLandport;
   }
 
-  // 格式化图片数组，转换为完整URL
-  private formatImages(images: any): Array<{ id: string; url: string; type?: string }> {
-    if (!Array.isArray(images)) return [];
-    return images.map((img: string, index: number) => ({
-      id: String(index + 1),
-      url: this.toPublicImageUrl(img),
-      type: undefined,
-    }));
-  }
-
   // 本地辅助：确保模型已加载、关联已建立，并在本地环境按需执行一次 sync
   private async loadModels() {
     const { ctx } = this;
@@ -56,6 +48,8 @@ export default class FleetService extends Service {
     const VehicleModel = (ctx.model as any)?.Vehicle || VehicleFactory(appAny);
     const TransportRecordModel = (ctx.model as any)?.TransportRecord || TransportRecordFactory(appAny);
     const UserModel = (ctx.model as any)?.User || UserFactory(appAny);
+    const FleetModel = (ctx.model as any)?.Fleet || FleetFactory(appAny);
+    const FleetMemberModel = (ctx.model as any)?.FleetMember || FleetMemberFactory(appAny);
 
     // 建立关联
     if (TransportRecordModel && VehicleModel && !TransportRecordModel.associations?.vehicle) {
@@ -64,6 +58,15 @@ export default class FleetService extends Service {
     if (VehicleModel && UserModel && !VehicleModel.associations?.user) {
       VehicleModel.belongsTo(UserModel, { as: 'user', foreignKey: 'userId' });
     }
+    if (VehicleModel && FleetModel && !VehicleModel.associations?.fleet) {
+      VehicleModel.belongsTo(FleetModel, { as: 'fleet', foreignKey: 'fleetId' });
+    }
+    if (FleetMemberModel && FleetModel && !FleetMemberModel.associations?.fleet) {
+      FleetMemberModel.belongsTo(FleetModel, { as: 'fleet', foreignKey: 'fleetId' });
+    }
+    if (FleetMemberModel && UserModel && !FleetMemberModel.associations?.user) {
+      FleetMemberModel.belongsTo(UserModel, { as: 'user', foreignKey: 'userId' });
+    }
 
     const syncConfig = (this.app.config as any).sequelize?.sync;
     const shouldSync = this.app.config.env === 'local' && !!syncConfig;
@@ -71,11 +74,13 @@ export default class FleetService extends Service {
       const syncOptions = typeof syncConfig === 'object' ? syncConfig : {};
       // 先同步用户表，再同步依赖其外键的表
       if (UserModel?.sync) await UserModel.sync(syncOptions);
+      if (FleetModel?.sync) await FleetModel.sync(syncOptions);
+      if (FleetMemberModel?.sync) await FleetMemberModel.sync(syncOptions);
       if (VehicleModel?.sync) await VehicleModel.sync(syncOptions);
       if (TransportRecordModel?.sync) await TransportRecordModel.sync(syncOptions);
       __modelsSyncedFlag = true;
     }
-    return { VehicleModel, TransportRecordModel, UserModel } as const;
+    return { VehicleModel, TransportRecordModel, UserModel, FleetModel, FleetMemberModel } as const;
   }
 
   // ========== 车辆管理 ==========
@@ -132,20 +137,45 @@ export default class FleetService extends Service {
 
   // 获取车辆列表
   async getVehicleList(query: any, userId: number) {
-    const { page = 1, pageSize = 10, startDate, endDate } = query;
+    const { page = 1, pageSize = 10, startDate, endDate, fleetId } = query;
     const pageNum = Number(page) || 1;
     const pageSizeNum = Number(pageSize) || 10;
 
-    const { VehicleModel, TransportRecordModel } = await this.loadModels();
+    const { VehicleModel, TransportRecordModel, FleetMemberModel } = await this.loadModels();
     const sequelize = VehicleModel.sequelize;
     if (!sequelize) {
       throw new Error('Sequelize instance not available');
     }
 
-    // 获取用户的所有车辆（总是返回所有车辆）
+    // 构建车辆查询条件
+    let vehicleWhere: any = { userId };
+    
+    // 如果提供了 fleetId，需要检查用户是否在该车队中
+    if (fleetId !== undefined && fleetId !== null && fleetId !== '') {
+      const fleetIdNum = Number(fleetId);
+      if (Number.isFinite(fleetIdNum) && fleetIdNum > 0) {
+        // 检查用户是否在该车队中
+        const member = await FleetMemberModel.findOne({
+          where: { fleetId: fleetIdNum, userId },
+        });
+        if (!member) {
+          const { ctx } = this;
+          ctx.throw(403, '无权访问该车队的车辆');
+        }
+        vehicleWhere.fleetId = fleetIdNum;
+      } else {
+        // fleetId 为 null 或空字符串，表示查询个人车辆
+        vehicleWhere.fleetId = null;
+      }
+    } else {
+      // 未提供 fleetId，返回用户的所有车辆（包括个人和车队车辆）
+      // 不添加 fleetId 条件
+    }
+
+    // 获取车辆
     const vehicles = await VehicleModel.findAll({
-      where: { userId },
-      attributes: ['id', 'brand', 'horsepower', 'loadCapacity', 'axleCount', 'tireCount', 'trailerLength', 'licensePlate', 'name', 'phone', 'certificateImages', 'otherImages', 'createdAt', 'updatedAt'],
+      where: vehicleWhere,
+      attributes: ['id', 'brand', 'horsepower', 'loadCapacity', 'axleCount', 'tireCount', 'trailerLength', 'licensePlate', 'name', 'phone', 'certificateImages', 'otherImages', 'fleetId', 'createdAt', 'updatedAt'],
     });
 
     if (vehicles.length === 0) {
@@ -569,18 +599,43 @@ export default class FleetService extends Service {
   // ========== 统计接口 ==========
 
   // 获取总览统计数据
-  async getOverviewStats(userId: number, query: { startDate: string; endDate: string }) {
-    const { TransportRecordModel, VehicleModel } = await this.loadModels();
+  async getOverviewStats(userId: number, query: { startDate: string; endDate: string; fleetId?: string | number | null }) {
+    const { TransportRecordModel, VehicleModel, FleetMemberModel } = await this.loadModels();
     const sequelize = TransportRecordModel.sequelize;
     if (!sequelize) {
       throw new Error('Sequelize instance not available');
     }
 
-    const { startDate, endDate } = query;
+    const { startDate, endDate, fleetId } = query;
 
-    // 获取用户的所有车辆
+    // 构建车辆查询条件
+    let vehicleWhere: any = { userId };
+    
+    // 如果提供了 fleetId，需要检查用户是否在该车队中
+    if (fleetId !== undefined && fleetId !== null && fleetId !== '') {
+      const fleetIdNum = Number(fleetId);
+      if (Number.isFinite(fleetIdNum) && fleetIdNum > 0) {
+        // 检查用户是否在该车队中
+        const member = await FleetMemberModel.findOne({
+          where: { fleetId: fleetIdNum, userId },
+        });
+        if (!member) {
+          const { ctx } = this;
+          ctx.throw(403, '无权访问该车队的统计数据');
+        }
+        vehicleWhere.fleetId = fleetIdNum;
+      } else {
+        // fleetId 为 null 或空字符串，表示查询个人车辆
+        vehicleWhere.fleetId = null;
+      }
+    } else {
+      // 未提供 fleetId，统计用户的所有车辆（包括个人和车队车辆）
+      // 不添加 fleetId 条件
+    }
+
+    // 获取车辆
     const vehicles = await VehicleModel.findAll({
-      where: { userId },
+      where: vehicleWhere,
       attributes: ['id'],
       raw: true,
     });
@@ -803,6 +858,386 @@ export default class FleetService extends Service {
       expenseBreakdown,
       dailyTrend,
     };
+  }
+
+  // ========== 车队管理 ==========
+
+  // 检查用户是否为车队管理员
+  private async checkFleetAdmin(fleetId: number, userId: number) {
+    const { FleetMemberModel } = await this.loadModels();
+    const member = await FleetMemberModel.findOne({
+      where: { fleetId, userId },
+    });
+    if (!member) {
+      const { ctx } = this;
+      ctx.throw(403, '您不是该车队的成员');
+    }
+    const memberData = member.toJSON ? member.toJSON() : member;
+    if ((memberData as any).role !== 'admin') {
+      const { ctx } = this;
+      ctx.throw(403, '只有管理员可以执行此操作');
+    }
+    return member;
+  }
+
+  // 检查用户是否为车队成员
+  private async checkFleetMember(fleetId: number, userId: number) {
+    const { FleetMemberModel } = await this.loadModels();
+    const member = await FleetMemberModel.findOne({
+      where: { fleetId, userId },
+    });
+    if (!member) {
+      const { ctx } = this;
+      ctx.throw(403, '您不是该车队的成员');
+    }
+    return member;
+  }
+
+  // 获取车队列表
+  async getFleetList(userId: number) {
+    const { FleetModel, FleetMemberModel } = await this.loadModels();
+    const sequelize = FleetMemberModel.sequelize;
+    if (!sequelize) {
+      throw new Error('Sequelize instance not available');
+    }
+    
+    // 先查询用户所在的所有车队成员记录
+    const members = await FleetMemberModel.findAll({
+      where: { userId },
+    });
+
+    // 如果没有成员记录，直接返回空数组
+    if (members.length === 0) {
+      return [];
+    }
+
+    // 获取所有车队ID
+    const fleetIds = members.map((m: any) => {
+      const memberData = m.toJSON ? m.toJSON() : m;
+      return (memberData as any).fleetId;
+    });
+
+    // 查询所有车队信息
+    const fleets = await FleetModel.findAll({
+      where: { id: { [Op.in]: fleetIds } },
+      attributes: ['id', 'name', 'description', 'createdAt', 'updatedAt'],
+    });
+
+    // 构建车队ID到车队信息的映射
+    const fleetMap = new Map();
+    fleets.forEach((f: any) => {
+      const fleetData = f.toJSON ? f.toJSON() : f;
+      fleetMap.set(fleetData.id, fleetData);
+    });
+
+    // 统计每个车队的成员数量
+    const memberCounts = await FleetMemberModel.findAll({
+      where: { fleetId: { [Op.in]: fleetIds } },
+      attributes: [
+        'fleetId',
+        [sequelize.fn('COUNT', sequelize.col('id')), 'count'],
+      ],
+      group: ['fleetId'],
+      raw: true,
+    });
+
+    const countMap = new Map();
+    memberCounts.forEach((item: any) => {
+      countMap.set(item.fleetId, Number(item.count || 0));
+    });
+
+    // 格式化返回数据，去重（同一个用户可能在多个车队中，但每个车队只返回一次）
+    const resultMap = new Map();
+    members.forEach((m: any) => {
+      const memberData = m.toJSON ? m.toJSON() : m;
+      const fleetId = (memberData as any).fleetId;
+      const fleet = fleetMap.get(fleetId);
+      if (fleet && !resultMap.has(fleetId)) {
+        resultMap.set(fleetId, {
+          id: fleet.id,
+          name: fleet.name,
+          description: fleet.description || null,
+          memberCount: countMap.get(fleet.id) || 0,
+          createdAt: fleet.createdAt,
+          updatedAt: fleet.updatedAt,
+        });
+      }
+    });
+
+    return Array.from(resultMap.values());
+  }
+
+  // 创建车队
+  async createFleet(fleetData: { name: string; description?: string }, userId: number) {
+    const { FleetModel, FleetMemberModel } = await this.loadModels();
+    
+    // 创建车队
+    const fleet = await FleetModel.create({
+      name: fleetData.name,
+      description: fleetData.description || null,
+    });
+
+    // 创建者自动成为管理员
+    await FleetMemberModel.create({
+      fleetId: fleet.id,
+      userId,
+      role: 'admin',
+    });
+
+    const fleetData_result = fleet.toJSON ? fleet.toJSON() : fleet;
+    return {
+      id: fleetData_result.id,
+      name: fleetData_result.name,
+      description: fleetData_result.description || null,
+      createdAt: fleetData_result.createdAt,
+      updatedAt: fleetData_result.updatedAt,
+    };
+  }
+
+  // 获取车队详情
+  async getFleetDetail(fleetId: number, userId: number) {
+    const { FleetModel, FleetMemberModel, UserModel } = await this.loadModels();
+    
+    // 检查用户是否为车队成员
+    await this.checkFleetMember(fleetId, userId);
+
+    // 获取车队信息
+    const fleet = await FleetModel.findByPk(fleetId);
+    if (!fleet) {
+      const { ctx } = this;
+      ctx.throw(404, '车队不存在');
+    }
+
+    // 获取成员列表
+    const members = await FleetMemberModel.findAll({
+      where: { fleetId },
+      include: [
+        {
+          model: UserModel,
+          as: 'user',
+          attributes: ['id', 'nickname', 'avatar'],
+        },
+      ],
+      order: [['joinedAt', 'DESC']],
+    });
+
+    // 统计成员数量
+    const memberCount = await FleetMemberModel.count({
+      where: { fleetId },
+    });
+
+    // 格式化成员数据
+    const membersList = members.map((m: any) => {
+      const memberData = m.toJSON ? m.toJSON() : m;
+      const user = (memberData as any).user;
+      return {
+        id: memberData.id,
+        fleetId: memberData.fleetId,
+        userId: memberData.userId,
+        role: memberData.role,
+        nickname: user?.nickname || null,
+        avatar: user?.avatar || null,
+        joinedAt: memberData.joinedAt,
+      };
+    });
+
+    const fleetData_result = fleet.toJSON ? fleet.toJSON() : fleet;
+    return {
+      id: fleetData_result.id,
+      name: fleetData_result.name,
+      description: fleetData_result.description || null,
+      memberCount,
+      members: membersList,
+      createdAt: fleetData_result.createdAt,
+      updatedAt: fleetData_result.updatedAt,
+    };
+  }
+
+  // 更新车队信息
+  async updateFleet(fleetId: number, fleetData: { name?: string; description?: string }, userId: number) {
+    const { FleetModel } = await this.loadModels();
+    
+    // 检查用户是否为管理员
+    await this.checkFleetAdmin(fleetId, userId);
+
+    // 更新车队信息
+    const fleet = await FleetModel.findByPk(fleetId);
+    if (!fleet) {
+      const { ctx } = this;
+      ctx.throw(404, '车队不存在');
+    }
+
+    const updateData: any = {};
+    if (fleetData.name !== undefined) {
+      updateData.name = fleetData.name;
+    }
+    if (fleetData.description !== undefined) {
+      updateData.description = fleetData.description || null;
+    }
+
+    await fleet.update(updateData);
+
+    const fleetData_result = fleet.toJSON ? fleet.toJSON() : fleet;
+    return {
+      id: fleetData_result.id,
+      name: fleetData_result.name,
+      description: fleetData_result.description || null,
+      updatedAt: fleetData_result.updatedAt,
+    };
+  }
+
+  // 删除车队
+  async deleteFleet(fleetId: number, userId: number) {
+    const { FleetModel } = await this.loadModels();
+    
+    // 检查用户是否为管理员
+    await this.checkFleetAdmin(fleetId, userId);
+
+    // 删除车队（级联删除成员）
+    const fleet = await FleetModel.findByPk(fleetId);
+    if (!fleet) {
+      const { ctx } = this;
+      ctx.throw(404, '车队不存在');
+    }
+
+    await fleet.destroy();
+    return true;
+  }
+
+  // 获取车队成员列表
+  async getFleetMembers(fleetId: number, userId: number) {
+    const { FleetMemberModel, UserModel } = await this.loadModels();
+    
+    // 检查用户是否为车队成员
+    await this.checkFleetMember(fleetId, userId);
+
+    // 获取成员列表
+    const members = await FleetMemberModel.findAll({
+      where: { fleetId },
+      include: [
+        {
+          model: UserModel,
+          as: 'user',
+          attributes: ['id', 'nickname', 'avatar'],
+        },
+      ],
+      order: [['joinedAt', 'DESC']],
+    });
+
+    // 格式化成员数据
+    const result = members.map((m: any) => {
+      const memberData = m.toJSON ? m.toJSON() : m;
+      const user = (memberData as any).user;
+      return {
+        id: memberData.id,
+        fleetId: memberData.fleetId,
+        userId: memberData.userId,
+        role: memberData.role,
+        nickname: user?.nickname || null,
+        avatar: user?.avatar || null,
+        joinedAt: memberData.joinedAt,
+      };
+    });
+
+    return result;
+  }
+
+  // 添加车队成员
+  async addFleetMember(fleetId: number, targetUserId: number, userId: number) {
+    const { FleetMemberModel } = await this.loadModels();
+    
+    // 检查用户是否为管理员
+    await this.checkFleetAdmin(fleetId, userId);
+
+    // 检查目标用户是否已经是成员
+    const existingMember = await FleetMemberModel.findOne({
+      where: { fleetId, userId: targetUserId },
+    });
+    if (existingMember) {
+      const { ctx } = this;
+      ctx.throw(400, '该用户已经是车队成员');
+    }
+
+    // 添加成员
+    const member = await FleetMemberModel.create({
+      fleetId,
+      userId: targetUserId,
+      role: 'member',
+    });
+
+    const memberData = member.toJSON ? member.toJSON() : member;
+    return {
+      id: memberData.id,
+      fleetId: memberData.fleetId,
+      userId: memberData.userId,
+      role: memberData.role,
+      joinedAt: memberData.joinedAt,
+    };
+  }
+
+  // 移除车队成员
+  async removeFleetMember(fleetId: number, memberId: number, userId: number) {
+    const { FleetMemberModel } = await this.loadModels();
+    
+    // 检查用户是否为管理员
+    await this.checkFleetAdmin(fleetId, userId);
+
+    // 查找成员
+    const member = await FleetMemberModel.findOne({
+      where: { id: memberId, fleetId },
+    });
+    if (!member) {
+      const { ctx } = this;
+      ctx.throw(404, '成员不存在');
+    }
+
+    const memberData = member.toJSON ? member.toJSON() : member;
+    // 不能移除管理员
+    if ((memberData as any).role === 'admin') {
+      const { ctx } = this;
+      ctx.throw(400, '不能移除管理员');
+    }
+
+    await member.destroy();
+    return true;
+  }
+
+  // 搜索用户
+  async searchUsers(keyword?: string) {
+    const { UserModel } = await this.loadModels();
+    
+    let whereCondition: any = {};
+    
+    // 如果提供了关键词，进行模糊搜索
+    if (keyword && keyword.trim() !== '') {
+      const searchKeyword = `%${keyword.trim()}%`;
+      whereCondition = {
+        [Op.or]: [
+          { nickname: { [Op.like]: searchKeyword } },
+          { phone: { [Op.like]: searchKeyword } },
+        ],
+      };
+    }
+
+    const users = await UserModel.findAll({
+      where: whereCondition,
+      attributes: ['id', 'nickname', 'avatar', 'phone', 'role'],
+      order: [['id', 'DESC']],
+      limit: 20,
+    });
+
+    const result = users.map((u: any) => {
+      const userData = u.toJSON ? u.toJSON() : u;
+      return {
+        id: userData.id,
+        nickname: userData.nickname || null,
+        avatar: userData.avatar || null,
+        phone: userData.phone || null,
+        role: userData.role || null,
+      };
+    });
+
+    return result;
   }
 
 }

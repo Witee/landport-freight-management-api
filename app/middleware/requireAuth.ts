@@ -18,6 +18,10 @@ export default () => {
     if (path.startsWith('/api/lpwx/auth/')) {
       return await next();
     }
+    // 放行车队管理登录接口
+    if (path === '/api/lpwx/fleet/auth/login') {
+      return await next();
+    }
     // 放行达成官网管理认证接口
     if (path.startsWith('/api/dc/auth/')) {
       return await next();

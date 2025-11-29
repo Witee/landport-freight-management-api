@@ -52,6 +52,11 @@ export default (_options, app) => {
 
     const getUserBearer = () => extractBearer(getHeader('authorization', 'Authorization'));
 
+    // 获取车队管理接口的 token（只使用 Authorization Bearer）
+    const getFleetAuthToken = () => {
+      return extractBearer(getHeader('authorization', 'Authorization'));
+    };
+
     const verifyToken = (token: string, secret: string) => {
       try {
         return app.jwt.verify(token, secret);
@@ -86,7 +91,20 @@ export default (_options, app) => {
     setDcState({}, 'NoToken');
 
     try {
-      if (path.startsWith('/api/lpwx/')) {
+      // 车队管理接口（teams, users）只使用 Authorization Bearer
+      if (path.startsWith('/api/lpwx/fleet/teams') || path === '/api/lpwx/fleet/users') {
+        const token = getFleetAuthToken();
+        if (!token) {
+          setUserState({}, 'NoToken');
+        } else {
+          try {
+            const payload = verifyToken(token, jwtSecret);
+            setUserState(payload);
+          } catch (errName) {
+            setUserState({}, errName as string);
+          }
+        }
+      } else if (path.startsWith('/api/lpwx/')) {
         const token = getJwtToken();
         if (!token) {
           setUserState({}, 'NoToken');

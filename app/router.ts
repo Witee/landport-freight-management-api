@@ -10,6 +10,7 @@ export default (app) => {
 
   // 认证相关
   router.post('/lpwx/auth/wx-login', controller.auth.wxLogin);
+  router.post('/lpwx/fleet/auth/login', controller.fleet.login);
 
   // 文件上传
   router.post('/lpwx/upload/goods-image', controller.upload.uploadGoodsImage);
@@ -41,6 +42,18 @@ export default (app) => {
   router.delete('/lpwx/fleet/transport-records/:id', controller.fleet.deleteTransportRecord);
   router.get('/lpwx/fleet/stats/overview', controller.fleet.getOverviewStats);
   router.get('/lpwx/fleet/stats/reconciliation', controller.fleet.getReconciliationStats);
+
+  // 车队管理相关
+  router.get('/lpwx/fleet/teams', controller.fleet.listFleets);
+  router.post('/lpwx/fleet/teams', controller.fleet.createFleet);
+  router.get('/lpwx/fleet/teams/my-teams', controller.fleet.getMyFleets);
+  router.get('/lpwx/fleet/teams/:id', controller.fleet.getFleet);
+  router.put('/lpwx/fleet/teams/:id', controller.fleet.updateFleet);
+  router.delete('/lpwx/fleet/teams/:id', controller.fleet.deleteFleet);
+  router.get('/lpwx/fleet/teams/:id/members', controller.fleet.listFleetMembers);
+  router.post('/lpwx/fleet/teams/:id/members', controller.fleet.addFleetMember);
+  router.delete('/lpwx/fleet/teams/:id/members/:memberId', controller.fleet.removeFleetMember);
+  router.get('/lpwx/fleet/users', controller.fleet.searchUsers);
 
   // ========== 第二套系统：达成货运代理官网相关接口 ==========
   // 前缀：dc
