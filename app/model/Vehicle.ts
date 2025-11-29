@@ -13,6 +13,16 @@ export default (app) => {
         allowNull: false,
         comment: '所属用户ID',
       },
+      name: {
+        type: STRING(100),
+        allowNull: true,
+        comment: '车辆名称',
+      },
+      phone: {
+        type: STRING(50),
+        allowNull: true,
+        comment: '联系电话',
+      },
       brand: {
         type: STRING(100),
         allowNull: false,
@@ -42,6 +52,11 @@ export default (app) => {
         type: STRING(50),
         allowNull: false,
         comment: '挂车长度',
+      },
+      licensePlate: {
+        type: STRING(20),
+        allowNull: true,
+        comment: '车牌号',
       },
       certificateImages: {
         type: JSON,

@@ -2,7 +2,7 @@ import { Service } from 'egg';
 import { Op, literal } from 'sequelize';
 import VehicleFactory from '../model/Vehicle.js';
 import TransportRecordFactory from '../model/TransportRecord.js';
-import CertificateShareTokenFactory from '../model/CertificateShareToken.js';
+import VehicleShareTokenFactory from '../model/VehicleShareToken.js';
 import UserFactory from '../model/User.js';
 import { randomUUID } from 'crypto';
 
@@ -10,21 +10,62 @@ import { randomUUID } from 'crypto';
 let __modelsSyncedFlag = false;
 
 export default class FleetService extends Service {
+  // 获取资源主机地址
+  private getAssetHost(): string {
+    const hostRaw = (this.app.config as any)?.assetHost;
+    if (!hostRaw) return '';
+    return String(hostRaw).trim().replace(/\/+$/, '');
+  }
+
+  // 将图片路径转换为公开访问的完整URL
+  private toPublicImageUrl(pathValue: any): any {
+    if (typeof pathValue !== 'string') return pathValue;
+    const original = pathValue.trim();
+    if (!original) return original;
+    if (/^https?:\/\//i.test(original)) {
+      return original;
+    }
+    const normalized = original.replace(/\\/g, '/');
+    const assetHost = this.getAssetHost();
+
+    const withLandport = normalized.startsWith('/landport/')
+      ? normalized
+      : normalized.startsWith('/uploads/')
+        ? `/landport${normalized}`
+        : normalized.startsWith('/public/uploads/')
+          ? `/landport${normalized.replace(/^\/public\//, '/')}`
+          : normalized.startsWith('/public/')
+            ? `/landport/uploads${normalized.replace(/^\/public/, '')}`
+            : normalized;
+
+    return assetHost ? `${assetHost}${withLandport}` : withLandport;
+  }
+
+  // 格式化图片数组，转换为完整URL
+  private formatImages(images: any): Array<{ id: string; url: string; type?: string }> {
+    if (!Array.isArray(images)) return [];
+    return images.map((img: string, index: number) => ({
+      id: String(index + 1),
+      url: this.toPublicImageUrl(img),
+      type: undefined,
+    }));
+  }
+
   // 本地辅助：确保模型已加载、关联已建立，并在本地环境按需执行一次 sync
   private async loadModels() {
     const { ctx } = this;
     const appAny = this.app as any;
     const VehicleModel = (ctx.model as any)?.Vehicle || VehicleFactory(appAny);
     const TransportRecordModel = (ctx.model as any)?.TransportRecord || TransportRecordFactory(appAny);
-    const CertificateShareTokenModel = (ctx.model as any)?.CertificateShareToken || CertificateShareTokenFactory(appAny);
+    const VehicleShareTokenModel = (ctx.model as any)?.VehicleShareToken || VehicleShareTokenFactory(appAny);
     const UserModel = (ctx.model as any)?.User || UserFactory(appAny);
 
     // 建立关联
     if (TransportRecordModel && VehicleModel && !TransportRecordModel.associations?.vehicle) {
       TransportRecordModel.belongsTo(VehicleModel, { as: 'vehicle', foreignKey: 'vehicleId' });
     }
-    if (CertificateShareTokenModel && VehicleModel && !CertificateShareTokenModel.associations?.vehicle) {
-      CertificateShareTokenModel.belongsTo(VehicleModel, { as: 'vehicle', foreignKey: 'vehicleId' });
+    if (VehicleShareTokenModel && VehicleModel && !VehicleShareTokenModel.associations?.vehicle) {
+      VehicleShareTokenModel.belongsTo(VehicleModel, { as: 'vehicle', foreignKey: 'vehicleId' });
     }
     if (VehicleModel && UserModel && !VehicleModel.associations?.user) {
       VehicleModel.belongsTo(UserModel, { as: 'user', foreignKey: 'userId' });
@@ -38,10 +79,10 @@ export default class FleetService extends Service {
       if (UserModel?.sync) await UserModel.sync(syncOptions);
       if (VehicleModel?.sync) await VehicleModel.sync(syncOptions);
       if (TransportRecordModel?.sync) await TransportRecordModel.sync(syncOptions);
-      if (CertificateShareTokenModel?.sync) await CertificateShareTokenModel.sync(syncOptions);
+      if (VehicleShareTokenModel?.sync) await VehicleShareTokenModel.sync(syncOptions);
       __modelsSyncedFlag = true;
     }
-    return { VehicleModel, TransportRecordModel, CertificateShareTokenModel, UserModel } as const;
+    return { VehicleModel, TransportRecordModel, VehicleShareTokenModel, UserModel } as const;
   }
 
   // ========== 车辆管理 ==========
@@ -111,7 +152,7 @@ export default class FleetService extends Service {
     // 获取用户的所有车辆（总是返回所有车辆）
     const vehicles = await VehicleModel.findAll({
       where: { userId },
-      attributes: ['id', 'brand', 'horsepower', 'loadCapacity', 'axleCount', 'tireCount', 'trailerLength', 'certificateImages', 'otherImages', 'createdAt', 'updatedAt'],
+      attributes: ['id', 'brand', 'horsepower', 'loadCapacity', 'axleCount', 'tireCount', 'trailerLength', 'licensePlate', 'name', 'phone', 'certificateImages', 'otherImages', 'createdAt', 'updatedAt'],
     });
 
     if (vehicles.length === 0) {
@@ -265,10 +306,15 @@ export default class FleetService extends Service {
   // 格式化车辆数据
   private formatVehicleItem(vehicle: any) {
     const raw = vehicle && typeof vehicle.toJSON === 'function' ? vehicle.toJSON() : vehicle;
+    // 转换图片URL为公开访问的完整URL
+    const formatImageArray = (images: any): string[] => {
+      if (!Array.isArray(images)) return [];
+      return images.map((img: string) => this.toPublicImageUrl(img));
+    };
     return {
       ...raw,
-      certificateImages: Array.isArray(raw.certificateImages) ? raw.certificateImages : [],
-      otherImages: Array.isArray(raw.otherImages) ? raw.otherImages : [],
+      certificateImages: formatImageArray(raw.certificateImages),
+      otherImages: formatImageArray(raw.otherImages),
     };
   }
 
@@ -766,12 +812,12 @@ export default class FleetService extends Service {
     };
   }
 
-  // ========== 证件分享 ==========
+  // ========== 车辆分享 ==========
 
-  // 生成分享 token（固定7天有效期，无使用次数限制）
+  // 生成分享 token（固定30天有效期，无使用次数限制）
   async generateShareToken(vehicleId: number, userId: number) {
     const { ctx } = this;
-    const { CertificateShareTokenModel, VehicleModel } = await this.loadModels();
+    const { VehicleShareTokenModel, VehicleModel } = await this.loadModels();
 
     // 验证车辆属于当前用户
     const vehicle = await VehicleModel.findOne({
@@ -781,20 +827,20 @@ export default class FleetService extends Service {
       ctx.throw(403, '车辆不存在或无权操作');
     }
 
-    // 生成 token，固定7天有效期
+    // 生成 token，固定30天有效期
     const token = randomUUID();
     const expireAt = new Date();
-    expireAt.setDate(expireAt.getDate() + 7); // 7天后过期
+    expireAt.setDate(expireAt.getDate() + 30); // 30天后过期
 
     // 创建 token 记录（不使用次数限制）
-    await CertificateShareTokenModel.create({
+    await VehicleShareTokenModel.create({
       token,
       vehicleId,
       expireAt,
     });
 
     // 构建分享链接
-    const shareUrl = `/pages/certificate-share/certificate-share?token=${token}`;
+    const shareUrl = `/pages/vehicle-share/vehicle-share?token=${token}`;
 
     return {
       token,
@@ -803,19 +849,32 @@ export default class FleetService extends Service {
     };
   }
 
-  // 通过 token 获取证件信息（公开接口）
-  async getCertificatesByToken(token: string) {
+  // 通过 token 获取车辆信息（公开接口）
+  async getVehicleByToken(token: string) {
     const { ctx } = this;
-    const { CertificateShareTokenModel, VehicleModel } = await this.loadModels();
+    const { VehicleShareTokenModel, VehicleModel } = await this.loadModels();
 
     // 查找 token
-    const tokenRecord = await CertificateShareTokenModel.findOne({
+    const tokenRecord = await VehicleShareTokenModel.findOne({
       where: { token },
       include: [
         {
           model: VehicleModel,
           as: 'vehicle',
-          attributes: ['id', 'brand', 'certificateImages'],
+          attributes: [
+            'id',
+            'brand',
+            'horsepower',
+            'loadCapacity',
+            'axleCount',
+            'tireCount',
+            'trailerLength',
+            'licensePlate',
+            'name',
+            'phone',
+            'certificateImages',
+            'otherImages',
+          ],
         },
       ],
     });
@@ -831,25 +890,29 @@ export default class FleetService extends Service {
       ctx.throw(404, '车辆不存在');
     }
 
-    // 检查过期时间（固定7天，一周后不可访问）
+    // 检查过期时间（固定30天）
     const expireAt = new Date(tokenData.expireAt);
     if (expireAt < new Date()) {
       ctx.throw(401, 'Token 已过期');
     }
 
-    // 格式化证件图片
-    const certificates = Array.isArray(vehicle.certificateImages)
-      ? vehicle.certificateImages.map((url: string, index: number) => ({
-          id: String(index + 1),
-          url,
-          type: undefined,
-        }))
-      : [];
+    // 格式化证件图片和其它图片
+    const certificateImages = this.formatImages(vehicle.certificateImages);
+    const otherImages = this.formatImages(vehicle.otherImages);
 
     return {
       vehicleId: vehicle.id,
-      vehicleBrand: vehicle.brand,
-      certificates,
+      brand: vehicle.brand,
+      horsepower: vehicle.horsepower,
+      loadCapacity: vehicle.loadCapacity,
+      axleCount: vehicle.axleCount,
+      tireCount: vehicle.tireCount,
+      trailerLength: vehicle.trailerLength,
+      licensePlate: vehicle.licensePlate || null,
+      name: vehicle.name || null,
+      phone: vehicle.phone || null,
+      certificateImages,
+      otherImages,
       expireAt: expireAt.toISOString(),
     };
   }

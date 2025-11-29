@@ -1,7 +1,7 @@
 export default (app) => {
   const { STRING, INTEGER, DATE } = app.Sequelize;
-  const CertificateShareToken = app.model.define(
-    'CertificateShareToken',
+  const VehicleShareToken = app.model.define(
+    'VehicleShareToken',
     {
       id: {
         type: INTEGER.UNSIGNED,
@@ -36,11 +36,11 @@ export default (app) => {
       },
     },
     {
-      tableName: 'certificate_share_tokens',
+      tableName: 'vehicle_share_tokens',
       timestamps: true,
       underscored: false,
     }
   );
-  return CertificateShareToken;
+  return VehicleShareToken;
 };
 

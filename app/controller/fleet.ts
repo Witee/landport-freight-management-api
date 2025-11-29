@@ -85,6 +85,11 @@ export default class FleetController extends Controller {
   async createVehicle() {
     const { ctx } = this;
     const body = ctx.request.body;
+    // 处理字段名映射：contactPhone -> phone
+    if (body.contactPhone !== undefined && body.phone === undefined) {
+      body.phone = body.contactPhone;
+      delete body.contactPhone;
+    }
     const validationPayload = buildValidationPayload(body);
     (ctx.validate as any)(
       {
@@ -94,6 +99,9 @@ export default class FleetController extends Controller {
         axleCount: { type: 'number', required: true, min: 1 },
         tireCount: { type: 'number', required: true, min: 1 },
         trailerLength: { type: 'string', required: true, allowEmpty: false, max: 50 },
+        licensePlate: { type: 'string', required: false, allowEmpty: true, max: 20 },
+        name: { type: 'string', required: false, allowEmpty: true, max: 100 },
+        phone: { type: 'string', required: false, allowEmpty: true, max: 50 },
         certificateImages: { type: 'array', required: false },
         otherImages: { type: 'array', required: false },
       },
@@ -116,6 +124,11 @@ export default class FleetController extends Controller {
       ctx.throw(400, '无效的车辆ID');
     }
     const body = ctx.request.body;
+    // 处理字段名映射：contactPhone -> phone
+    if (body.contactPhone !== undefined && body.phone === undefined) {
+      body.phone = body.contactPhone;
+      delete body.contactPhone;
+    }
     const validationPayload = buildValidationPayload(body);
     (ctx.validate as any)(
       {
@@ -125,6 +138,9 @@ export default class FleetController extends Controller {
         axleCount: { type: 'number', required: false, min: 1 },
         tireCount: { type: 'number', required: false, min: 1 },
         trailerLength: { type: 'string', required: false, allowEmpty: false, max: 50 },
+        licensePlate: { type: 'string', required: false, allowEmpty: true, max: 20 },
+        name: { type: 'string', required: false, allowEmpty: true, max: 100 },
+        phone: { type: 'string', required: false, allowEmpty: true, max: 50 },
         certificateImages: { type: 'array', required: false },
         otherImages: { type: 'array', required: false },
       },
@@ -422,9 +438,9 @@ export default class FleetController extends Controller {
     };
   }
 
-  // ========== 证件分享 ==========
+  // ========== 车辆分享 ==========
 
-  // 生成分享 token（固定7天有效期）
+  // 生成分享 token（固定30天有效期）
   async generateShareToken() {
     const { ctx } = this;
     const id = Number(ctx.params && ctx.params.id);
@@ -440,14 +456,14 @@ export default class FleetController extends Controller {
     };
   }
 
-  // 通过 token 获取证件信息（公开接口）
-  async getCertificatesByToken() {
+  // 通过 token 获取车辆信息（公开接口）
+  async getVehicleByToken() {
     const { ctx } = this;
     const token = ctx.params && ctx.params.token;
     if (!token || typeof token !== 'string') {
       ctx.throw(400, '无效的 token');
     }
-    const data = await ctx.service.fleetService.getCertificatesByToken(token);
+    const data = await ctx.service.fleetService.getVehicleByToken(token);
     ctx.body = {
       code: 200,
       message: '获取成功',
