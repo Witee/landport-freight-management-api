@@ -3,14 +3,12 @@ import { app } from '@eggjs/mock/bootstrap';
 import UserFactory from '../../app/model/User.js';
 import VehicleFactory from '../../app/model/Vehicle.js';
 import TransportRecordFactory from '../../app/model/TransportRecord.js';
-import VehicleShareTokenFactory from '../../app/model/VehicleShareToken.js';
 import { clearTestDatabase } from '../setup.js';
 
 describe('车队管理接口集成测试', () => {
   let UserModel: any;
   let VehicleModel: any;
   let TransportRecordModel: any;
-  let VehicleShareTokenModel: any;
   let user1Token: string;
   let user2Token: string;
   let user1Id: number;
@@ -25,12 +23,10 @@ describe('车队管理接口集成测试', () => {
     UserModel = UserFactory(app as any);
     VehicleModel = VehicleFactory(app as any);
     TransportRecordModel = TransportRecordFactory(app as any);
-    VehicleShareTokenModel = VehicleShareTokenFactory(app as any);
 
     await UserModel.sync({ alter: false, force: false });
     await VehicleModel.sync({ alter: false, force: false });
     await TransportRecordModel.sync({ alter: false, force: false });
-    await VehicleShareTokenModel.sync({ alter: false, force: false });
 
     // 创建测试用户
     const user1 = await UserModel.create({
@@ -485,71 +481,6 @@ describe('车队管理接口集成测试', () => {
 
       expect(unreconciledRes.status).toBe(200);
       expect(unreconciledRes.body.data.totalIncome).toBeLessThan(allTotalIncome);
-    });
-  });
-
-  describe('车辆分享', () => {
-    let shareToken: string;
-
-    test('应该能够生成分享 token（固定30天有效期）', async () => {
-      const res = await app
-        .httpRequest()
-        .post(`/api/lpwx/fleet/vehicles/${vehicle1Id}/share-token`)
-        .set('X-Token', user1Token);
-
-      expect(res.status).toBe(200);
-      expect(res.body.code).toBe(200);
-      expect(res.body.data).toHaveProperty('token');
-      expect(res.body.data).toHaveProperty('expireAt');
-      expect(res.body.data).toHaveProperty('shareUrl');
-      shareToken = res.body.data.token;
-
-      // 验证过期时间为30天后
-      const expireAt = new Date(res.body.data.expireAt);
-      const now = new Date();
-      const daysDiff = Math.ceil((expireAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-      expect(daysDiff).toBe(30);
-
-      // 验证分享链接路径
-      expect(res.body.data.shareUrl).toContain('/pages/vehicle-share/vehicle-share');
-    });
-
-    test('不应该能为其他用户的车辆生成分享 token', async () => {
-      const res = await app
-        .httpRequest()
-        .post(`/api/lpwx/fleet/vehicles/${vehicle2Id}/share-token`)
-        .set('X-Token', user1Token);
-
-      expect(res.status).toBe(403);
-    });
-
-    test('应该能够通过 token 获取完整车辆信息（公开接口）', async () => {
-      const res = await app
-        .httpRequest()
-        .get(`/api/public/fleet/vehicles/${shareToken}`);
-
-      expect(res.status).toBe(200);
-      expect(res.body.code).toBe(200);
-      expect(res.body.data).toHaveProperty('vehicleId');
-      expect(res.body.data).toHaveProperty('brand');
-      expect(res.body.data).toHaveProperty('horsepower');
-      expect(res.body.data).toHaveProperty('loadCapacity');
-      expect(res.body.data).toHaveProperty('axleCount');
-      expect(res.body.data).toHaveProperty('tireCount');
-      expect(res.body.data).toHaveProperty('trailerLength');
-      expect(res.body.data).toHaveProperty('phone');
-      expect(res.body.data).toHaveProperty('certificateImages');
-      expect(res.body.data).toHaveProperty('otherImages');
-      expect(Array.isArray(res.body.data.certificateImages)).toBe(true);
-      expect(Array.isArray(res.body.data.otherImages)).toBe(true);
-    });
-
-    test('无效的 token 应该返回错误', async () => {
-      const res = await app
-        .httpRequest()
-        .get('/api/public/fleet/vehicles/invalid-token');
-
-      expect(res.status).toBe(404);
     });
   });
 

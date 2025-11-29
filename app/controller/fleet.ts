@@ -438,39 +438,6 @@ export default class FleetController extends Controller {
     };
   }
 
-  // ========== 车辆分享 ==========
-
-  // 生成分享 token（固定30天有效期）
-  async generateShareToken() {
-    const { ctx } = this;
-    const id = Number(ctx.params && ctx.params.id);
-    if (!Number.isFinite(id) || id <= 0) {
-      ctx.throw(400, '无效的车辆ID');
-    }
-    const userId = ctx.state.user.userId;
-    const result = await ctx.service.fleetService.generateShareToken(id, userId);
-    ctx.body = {
-      code: 200,
-      message: '生成成功',
-      data: result,
-    };
-  }
-
-  // 通过 token 获取车辆信息（公开接口）
-  async getVehicleByToken() {
-    const { ctx } = this;
-    const token = ctx.params && ctx.params.token;
-    if (!token || typeof token !== 'string') {
-      ctx.throw(400, '无效的 token');
-    }
-    const data = await ctx.service.fleetService.getVehicleByToken(token);
-    ctx.body = {
-      code: 200,
-      message: '获取成功',
-      data,
-    };
-  }
-
   // 上传到云存储（复用 upload controller 的逻辑）
   private async uploadToCloudStorage(file: any, userId: string) {
     // 本地存储（仅用于开发环境示例）- 分目录：uploads/YYYY-MM-DD/{userId}/

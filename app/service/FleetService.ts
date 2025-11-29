@@ -2,9 +2,7 @@ import { Service } from 'egg';
 import { Op, literal } from 'sequelize';
 import VehicleFactory from '../model/Vehicle.js';
 import TransportRecordFactory from '../model/TransportRecord.js';
-import VehicleShareTokenFactory from '../model/VehicleShareToken.js';
 import UserFactory from '../model/User.js';
-import { randomUUID } from 'crypto';
 
 // 本地进程内标记：避免重复 sync（仅用于 local 环境开发）
 let __modelsSyncedFlag = false;
@@ -57,15 +55,11 @@ export default class FleetService extends Service {
     const appAny = this.app as any;
     const VehicleModel = (ctx.model as any)?.Vehicle || VehicleFactory(appAny);
     const TransportRecordModel = (ctx.model as any)?.TransportRecord || TransportRecordFactory(appAny);
-    const VehicleShareTokenModel = (ctx.model as any)?.VehicleShareToken || VehicleShareTokenFactory(appAny);
     const UserModel = (ctx.model as any)?.User || UserFactory(appAny);
 
     // 建立关联
     if (TransportRecordModel && VehicleModel && !TransportRecordModel.associations?.vehicle) {
       TransportRecordModel.belongsTo(VehicleModel, { as: 'vehicle', foreignKey: 'vehicleId' });
-    }
-    if (VehicleShareTokenModel && VehicleModel && !VehicleShareTokenModel.associations?.vehicle) {
-      VehicleShareTokenModel.belongsTo(VehicleModel, { as: 'vehicle', foreignKey: 'vehicleId' });
     }
     if (VehicleModel && UserModel && !VehicleModel.associations?.user) {
       VehicleModel.belongsTo(UserModel, { as: 'user', foreignKey: 'userId' });
@@ -79,10 +73,9 @@ export default class FleetService extends Service {
       if (UserModel?.sync) await UserModel.sync(syncOptions);
       if (VehicleModel?.sync) await VehicleModel.sync(syncOptions);
       if (TransportRecordModel?.sync) await TransportRecordModel.sync(syncOptions);
-      if (VehicleShareTokenModel?.sync) await VehicleShareTokenModel.sync(syncOptions);
       __modelsSyncedFlag = true;
     }
-    return { VehicleModel, TransportRecordModel, VehicleShareTokenModel, UserModel } as const;
+    return { VehicleModel, TransportRecordModel, UserModel } as const;
   }
 
   // ========== 车辆管理 ==========
@@ -812,109 +805,5 @@ export default class FleetService extends Service {
     };
   }
 
-  // ========== 车辆分享 ==========
-
-  // 生成分享 token（固定30天有效期，无使用次数限制）
-  async generateShareToken(vehicleId: number, userId: number) {
-    const { ctx } = this;
-    const { VehicleShareTokenModel, VehicleModel } = await this.loadModels();
-
-    // 验证车辆属于当前用户
-    const vehicle = await VehicleModel.findOne({
-      where: { id: vehicleId, userId },
-    });
-    if (!vehicle) {
-      ctx.throw(403, '车辆不存在或无权操作');
-    }
-
-    // 生成 token，固定30天有效期
-    const token = randomUUID();
-    const expireAt = new Date();
-    expireAt.setDate(expireAt.getDate() + 30); // 30天后过期
-
-    // 创建 token 记录（不使用次数限制）
-    await VehicleShareTokenModel.create({
-      token,
-      vehicleId,
-      expireAt,
-    });
-
-    // 构建分享链接
-    const shareUrl = `/pages/vehicle-share/vehicle-share?token=${token}`;
-
-    return {
-      token,
-      expireAt: expireAt.toISOString(),
-      shareUrl,
-    };
-  }
-
-  // 通过 token 获取车辆信息（公开接口）
-  async getVehicleByToken(token: string) {
-    const { ctx } = this;
-    const { VehicleShareTokenModel, VehicleModel } = await this.loadModels();
-
-    // 查找 token
-    const tokenRecord = await VehicleShareTokenModel.findOne({
-      where: { token },
-      include: [
-        {
-          model: VehicleModel,
-          as: 'vehicle',
-          attributes: [
-            'id',
-            'brand',
-            'horsepower',
-            'loadCapacity',
-            'axleCount',
-            'tireCount',
-            'trailerLength',
-            'licensePlate',
-            'name',
-            'phone',
-            'certificateImages',
-            'otherImages',
-          ],
-        },
-      ],
-    });
-
-    if (!tokenRecord) {
-      ctx.throw(404, 'Token 不存在');
-    }
-
-    const tokenData = tokenRecord.toJSON ? tokenRecord.toJSON() : tokenRecord;
-    const vehicle = (tokenData as any).vehicle;
-
-    if (!vehicle) {
-      ctx.throw(404, '车辆不存在');
-    }
-
-    // 检查过期时间（固定30天）
-    const expireAt = new Date(tokenData.expireAt);
-    if (expireAt < new Date()) {
-      ctx.throw(401, 'Token 已过期');
-    }
-
-    // 格式化证件图片和其它图片
-    const certificateImages = this.formatImages(vehicle.certificateImages);
-    const otherImages = this.formatImages(vehicle.otherImages);
-
-    return {
-      vehicleId: vehicle.id,
-      brand: vehicle.brand,
-      horsepower: vehicle.horsepower,
-      loadCapacity: vehicle.loadCapacity,
-      axleCount: vehicle.axleCount,
-      tireCount: vehicle.tireCount,
-      trailerLength: vehicle.trailerLength,
-      licensePlate: vehicle.licensePlate || null,
-      name: vehicle.name || null,
-      phone: vehicle.phone || null,
-      certificateImages,
-      otherImages,
-      expireAt: expireAt.toISOString(),
-    };
-  }
 }
 

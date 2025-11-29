@@ -2,14 +2,13 @@
 
 ## 接口概览
 
-车队管理接口提供车辆管理、货运记录管理、统计对账和车辆分享功能。所有接口都需要微信小程序用户登录认证（除公开分享接口外）。
+车队管理接口提供车辆管理、货运记录管理、统计对账功能。所有接口都需要微信小程序用户登录认证。
 
 **基础路径：** `/api/lpwx/fleet`
 
 **认证要求：**
 - 所有接口都需要微信小程序用户 Token（通过 `X-Token: <token>` 请求头）
 - 获取 Token：通过 `/api/lpwx/auth/wx-login` 接口登录获取
-- 公开分享接口 `/api/public/fleet/vehicles/:token` 无需认证
 
 **数据隔离：**
 - 所有接口自动根据当前登录用户的 `userId` 过滤数据
@@ -873,121 +872,7 @@ X-Token: <微信小程序用户token>
 
 ---
 
-## 四、车辆分享接口
-
-### 4.1 生成车辆分享 Token
-
-**接口：** `POST /api/lpwx/fleet/vehicles/:id/share-token`
-
-**权限：** 微信小程序用户（需登录），只能为自己的车辆生成分享 token
-
-**路径参数：**
-
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `id` | number | 是 | 车辆ID |
-
-**请求体：** 无（固定30天有效期）
-
-**请求示例：**
-```bash
-POST /api/lpwx/fleet/vehicles/1/share-token
-X-Token: <微信小程序用户token>
-```
-
-**响应格式：**
-```json
-{
-  "code": 200,
-  "message": "生成成功",
-  "data": {
-    "token": "550e8400-e29b-41d4-a716-446655440000",
-    "expireAt": "2025-02-22T10:00:00.000Z",
-    "shareUrl": "/pages/vehicle-share/vehicle-share?token=550e8400-e29b-41d4-a716-446655440000"
-  }
-}
-```
-
-**响应字段说明：**
-- `token`: 分享 token（UUID 格式）
-- `expireAt`: 过期时间（ISO 8601 格式，固定30天后）
-- `shareUrl`: 完整分享链接
-
-**错误响应：**
-- `403`: 无权为该车辆生成分享 token
-- `404`: 车辆不存在
-
----
-
-### 4.2 通过 Token 获取车辆信息（公开接口）
-
-**接口：** `GET /api/public/fleet/vehicles/:token`
-
-**权限：** 无需认证（公开接口）
-
-**路径参数：**
-
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `token` | string | 是 | 分享 token |
-
-**请求示例：**
-```bash
-GET /api/public/fleet/vehicles/550e8400-e29b-41d4-a716-446655440000
-```
-
-**响应格式：**
-```json
-{
-  "code": 200,
-  "message": "获取成功",
-  "data": {
-    "vehicleId": 1,
-    "brand": "解放",
-    "horsepower": "500",
-    "loadCapacity": "30吨",
-    "axleCount": 3,
-    "tireCount": 12,
-    "trailerLength": "13米",
-    "phone": "13800138000",
-    "certificateImages": [
-      {
-        "id": "1",
-        "url": "https://dachengguoji.com.cn/landport/uploads/2025-01-15/123/cert1.jpg",
-        "type": undefined
-      }
-    ],
-    "otherImages": [
-      {
-        "id": "1",
-        "url": "https://dachengguoji.com.cn/landport/uploads/2025-01-15/123/other1.jpg"
-      }
-    ],
-    "expireAt": "2025-02-22T10:00:00.000Z"
-  }
-}
-```
-
-**响应字段说明：**
-- `vehicleId`: 车辆ID
-- `brand`: 品牌
-- `horsepower`: 马力
-- `loadCapacity`: 载重
-- `axleCount`: 轴数
-- `tireCount`: 轮胎数量
-- `trailerLength`: 挂车长度
-- `phone`: 联系电话（可选，可能为 null）
-- `certificateImages`: 证件图片数组，每个元素包含 `id`、`url`（完整URL）、`type`（可选）
-- `otherImages`: 其它图片数组，每个元素包含 `id`、`url`（完整URL）
-- `expireAt`: Token 过期时间（ISO 8601 格式）
-
-**错误响应：**
-- `401`: Token 已过期
-- `404`: Token 不存在
-
----
-
-## 五、错误码说明
+## 四、错误码说明
 
 | 错误码 | 说明 | 可能原因 |
 |--------|------|----------|
