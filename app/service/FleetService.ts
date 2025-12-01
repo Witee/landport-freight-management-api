@@ -327,7 +327,7 @@ export default class FleetService extends Service {
   // 创建货运记录
   async createTransportRecord(recordData: any, userId: number) {
     const { ctx } = this;
-    const { TransportRecordModel, VehicleModel, FleetMemberModel } = await this.loadModels();
+    const { TransportRecordModel, VehicleModel } = await this.loadModels();
 
     // 验证车辆存在
     const vehicle = await VehicleModel.findByPk(recordData.vehicleId);
