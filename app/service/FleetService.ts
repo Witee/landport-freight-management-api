@@ -718,7 +718,7 @@ export default class FleetService extends Service {
       ctx.throw(404, '记录不存在');
     }
 
-    // 验证车辆权限：车辆所有者或车队管理员可以查看记录
+    // 验证车辆权限：车辆所有者或车队成员可以查看记录
     const recordData = record.toJSON ? record.toJSON() : record;
     const vehicle = (recordData as any).vehicle;
     if (!vehicle) {
@@ -733,8 +733,8 @@ export default class FleetService extends Service {
         ctx.throw(403, '记录不存在或无权访问');
       }
     } else {
-      // 如果是车队车辆，检查用户是否是车队管理员
-      await this.checkFleetAdmin(fleetId, userId);
+      // 如果是车队车辆，检查用户是否是车队成员（所有成员都可以查看）
+      await this.checkFleetMember(fleetId, userId);
     }
 
     return this.formatTransportRecordItem(record);
