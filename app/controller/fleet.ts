@@ -660,6 +660,30 @@ export default class FleetController extends Controller {
     };
   }
 
+  // 更新车队成员角色
+  async updateFleetMemberRole() {
+    const { ctx } = this;
+    const id = Number(ctx.params && ctx.params.id);
+    if (!Number.isFinite(id) || id <= 0) {
+      ctx.throw(400, '无效的车队ID');
+    }
+    const body = ctx.request.body;
+    (ctx.validate as any)(
+      {
+        memberId: { type: 'number', required: true, min: 1 },
+        role: { type: 'enum', required: true, values: ['admin', 'member'] },
+      },
+      body
+    );
+    const userId = ctx.state.user.userId;
+    const data = await ctx.service.fleetService.updateFleetMemberRole(id, body.memberId, body.role, userId);
+    ctx.body = {
+      code: 200,
+      message: '更新成功',
+      data,
+    };
+  }
+
   // 搜索用户
   async searchUsers() {
     const { ctx } = this;

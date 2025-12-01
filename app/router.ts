@@ -52,6 +52,7 @@ export default (app) => {
   router.delete('/lpwx/fleet/teams/:id', controller.fleet.deleteFleet);
   router.get('/lpwx/fleet/teams/:id/members', controller.fleet.listFleetMembers);
   router.post('/lpwx/fleet/teams/:id/members', controller.fleet.addFleetMember);
+  router.put('/lpwx/fleet/teams/:id/members', controller.fleet.updateFleetMemberRole);
   router.delete('/lpwx/fleet/teams/:id/members/:memberId', controller.fleet.removeFleetMember);
   router.get('/lpwx/fleet/users', controller.fleet.searchUsers);
 

@@ -529,9 +529,9 @@ export default class FleetService extends Service {
       });
       const personalVehicleIds = personalVehicles.map((v: any) => v.id);
 
-      // 2. 获取用户是管理员的车队ID
+      // 2. 获取用户是管理员或创建者的车队ID
       const adminMembers = await FleetMemberModel.findAll({
-        where: { userId, role: 'admin' },
+        where: { userId, role: { [Op.in]: ['admin', 'creator'] } },
         attributes: ['fleetId'],
         raw: true,
       });
@@ -819,9 +819,9 @@ export default class FleetService extends Service {
       });
       const personalVehicleIds = personalVehicles.map((v: any) => v.id);
 
-      // 2. 获取用户是管理员的车队ID
+      // 2. 获取用户是管理员或创建者的车队ID
       const adminMembers = await FleetMemberModel.findAll({
-        where: { userId, role: 'admin' },
+        where: { userId, role: { [Op.in]: ['admin', 'creator'] } },
         attributes: ['fleetId'],
         raw: true,
       });
@@ -986,7 +986,7 @@ export default class FleetService extends Service {
 
   // ========== 车队管理 ==========
 
-  // 检查用户是否为车队管理员
+  // 检查用户是否为车队管理员（admin 或 creator）
   private async checkFleetAdmin(fleetId: number, userId: number) {
     const { FleetMemberModel } = await this.loadModels();
     const member = await FleetMemberModel.findOne({
@@ -997,7 +997,8 @@ export default class FleetService extends Service {
       ctx.throw(403, '您不是该车队的成员');
     }
     const memberData = member.toJSON ? member.toJSON() : member;
-    if ((memberData as any).role !== 'admin') {
+    const role = (memberData as any).role;
+    if (role !== 'admin' && role !== 'creator') {
       const { ctx } = this;
       ctx.throw(403, '只有管理员可以执行此操作');
     }
@@ -1125,11 +1126,12 @@ export default class FleetService extends Service {
       countMap.set(item.fleetId, Number(item.count || 0));
     });
 
-    // 格式化返回数据，去重（同一个用户可能在多个车队中，但每个车队只返回一次）
+    // 格式化返回数据，包含用户在每个车队中的角色
     const resultMap = new Map();
     members.forEach((m: any) => {
       const memberData = m.toJSON ? m.toJSON() : m;
       const fleetId = (memberData as any).fleetId;
+      const role = (memberData as any).role;
       const fleet = fleetMap.get(fleetId);
       if (fleet && !resultMap.has(fleetId)) {
         resultMap.set(fleetId, {
@@ -1137,6 +1139,7 @@ export default class FleetService extends Service {
           name: fleet.name,
           description: fleet.description || null,
           memberCount: countMap.get(fleet.id) || 0,
+          myRole: role, // 当前用户在该车队中的角色
           createdAt: fleet.createdAt,
           updatedAt: fleet.updatedAt,
         });
@@ -1156,11 +1159,11 @@ export default class FleetService extends Service {
       description: fleetData.description || null,
     });
 
-    // 创建者自动成为管理员
+    // 创建者自动成为 creator
     await FleetMemberModel.create({
       fleetId: fleet.id,
       userId,
-      role: 'admin',
+      role: 'creator',
     });
 
     const fleetData_result = fleet.toJSON ? fleet.toJSON() : fleet;
@@ -1205,6 +1208,13 @@ export default class FleetService extends Service {
       where: { fleetId },
     });
 
+    // 获取当前用户在该车队中的角色
+    const currentUserMember = await FleetMemberModel.findOne({
+      where: { fleetId, userId },
+    });
+    const currentUserMemberData = currentUserMember?.toJSON ? currentUserMember.toJSON() : currentUserMember;
+    const myRole = (currentUserMemberData as any)?.role || null;
+
     // 格式化成员数据
     const membersList = members.map((m: any) => {
       const memberData = m.toJSON ? m.toJSON() : m;
@@ -1226,6 +1236,7 @@ export default class FleetService extends Service {
       name: fleetData_result.name,
       description: fleetData_result.description || null,
       memberCount,
+      myRole, // 当前用户在该车队中的角色
       members: membersList,
       createdAt: fleetData_result.createdAt,
       updatedAt: fleetData_result.updatedAt,
@@ -1371,14 +1382,52 @@ export default class FleetService extends Service {
     }
 
     const memberData = member.toJSON ? member.toJSON() : member;
-    // 不能移除管理员
-    if ((memberData as any).role === 'admin') {
+    // 不能移除管理员和创建者
+    const role = (memberData as any).role;
+    if (role === 'admin' || role === 'creator') {
       const { ctx } = this;
-      ctx.throw(400, '不能移除管理员');
+      ctx.throw(400, '不能移除管理员或创建者');
     }
 
     await member.destroy();
     return true;
+  }
+
+  // 更新车队成员角色
+  async updateFleetMemberRole(fleetId: number, memberId: number, newRole: 'admin' | 'member', userId: number) {
+    const { ctx } = this;
+    const { FleetMemberModel } = await this.loadModels();
+    
+    // 检查用户是否为管理员
+    await this.checkFleetAdmin(fleetId, userId);
+
+    // 查找成员
+    const member = await FleetMemberModel.findOne({
+      where: { id: memberId, fleetId },
+    });
+    if (!member) {
+      ctx.throw(404, '成员不存在');
+    }
+
+    const memberData = member.toJSON ? member.toJSON() : member;
+    const currentRole = (memberData as any).role;
+
+    // 不能修改创建者的角色
+    if (currentRole === 'creator') {
+      ctx.throw(400, '不能修改创建者的角色');
+    }
+
+    // 更新角色（newRole 类型已限制为 'admin' | 'member'，不可能是 'creator'）
+    await member.update({ role: newRole });
+
+    const updatedMemberData = member.toJSON ? member.toJSON() : member;
+    return {
+      id: updatedMemberData.id,
+      fleetId: updatedMemberData.fleetId,
+      userId: updatedMemberData.userId,
+      role: updatedMemberData.role,
+      joinedAt: updatedMemberData.joinedAt,
+    };
   }
 
   // 搜索用户

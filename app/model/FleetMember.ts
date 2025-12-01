@@ -19,9 +19,9 @@ export default (app) => {
         comment: '用户ID',
       },
       role: {
-        type: ENUM('admin', 'member'),
+        type: ENUM('admin', 'member', 'creator'),
         defaultValue: 'member',
-        comment: '角色：admin-管理员，member-普通成员',
+        comment: '角色：admin-管理员，member-普通成员，creator-创建者',
       },
     },
     {
