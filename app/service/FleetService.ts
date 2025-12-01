@@ -344,20 +344,16 @@ export default class FleetService extends Service {
       : null;
 
     if (requestFleetId !== null && Number.isFinite(requestFleetId) && requestFleetId > 0) {
-      // 如果提供了 fleetId，验证用户是车队成员
-      const member = await FleetMemberModel.findOne({
-        where: { fleetId: requestFleetId, userId },
-      });
-      if (!member) {
-        ctx.throw(403, '无权访问该车队的数据');
-      }
+      // 如果提供了 fleetId，验证用户是车队管理员（只有管理员可以创建记录）
+      await this.checkFleetAdmin(requestFleetId, userId);
       // 验证车辆属于该车队
       if (vehicleFleetId !== requestFleetId) {
         ctx.throw(400, '车辆不属于指定的车队');
       }
     } else {
-      // 如果没有提供 fleetId，验证车辆属于当前用户
+      // 如果没有提供 fleetId，验证车辆属于当前用户或用户是车队管理员
       if (!vehicleFleetId || vehicleFleetId === null) {
+        // 个人车辆，检查车辆属于当前用户
         if (vehicleUserId !== userId) {
           ctx.throw(403, '车辆不存在或不属于当前用户');
         }
@@ -563,8 +559,8 @@ export default class FleetService extends Service {
             ctx.throw(403, '车辆不存在或不属于当前用户');
           }
         } else {
-          // 如果是车队车辆，检查用户是否是车队管理员
-          await this.checkFleetAdmin(vehicleFleetId, userId);
+          // 如果是车队车辆，检查用户是否是车队成员（所有成员都可以查看记录列表）
+          await this.checkFleetMember(vehicleFleetId, userId);
         }
       }
       where.vehicleId = vehicleId;
@@ -905,8 +901,8 @@ export default class FleetService extends Service {
             ctx.throw(403, '车辆不存在或不属于当前用户');
           }
         } else {
-          // 如果是车队车辆，检查用户是否是车队管理员
-          await this.checkFleetAdmin(vehicleFleetId, userId);
+          // 如果是车队车辆，检查用户是否是车队成员（所有成员都可以查看统计）
+          await this.checkFleetMember(vehicleFleetId, userId);
         }
       }
       vehicleIds = [vehicleId];
