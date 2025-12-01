@@ -250,6 +250,7 @@ export default class FleetController extends Controller {
         page: { type: 'number', required: false, min: 1 },
         pageSize: { type: 'number', required: false, min: 1, max: 100 },
         isReconciled: { type: 'string', required: false, allowEmpty: true },
+        fleetId: { type: 'string', required: false, allowEmpty: true },
       },
       query
     );
@@ -297,6 +298,7 @@ export default class FleetController extends Controller {
         otherExpense: { type: 'string', required: true, allowEmpty: false },
         remark: { type: 'string', required: false, allowEmpty: true },
         images: { type: 'array', required: false },
+        fleetId: { type: 'number', required: false, min: 1 },
       },
       validationPayload
     );
@@ -424,6 +426,7 @@ export default class FleetController extends Controller {
         startDate: { type: 'string', required: false, allowEmpty: true },
         endDate: { type: 'string', required: false, allowEmpty: true },
         vehicleId: { type: 'number', required: false, min: 1 },
+        fleetId: { type: 'string', required: false, allowEmpty: true },
         period: {
           type: 'enum',
           required: false,

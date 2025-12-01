@@ -55,6 +55,9 @@ export default class FleetService extends Service {
     if (TransportRecordModel && VehicleModel && !TransportRecordModel.associations?.vehicle) {
       TransportRecordModel.belongsTo(VehicleModel, { as: 'vehicle', foreignKey: 'vehicleId' });
     }
+    if (TransportRecordModel && FleetModel && !TransportRecordModel.associations?.fleet) {
+      TransportRecordModel.belongsTo(FleetModel, { as: 'fleet', foreignKey: 'fleetId' });
+    }
     if (VehicleModel && UserModel && !VehicleModel.associations?.user) {
       VehicleModel.belongsTo(UserModel, { as: 'user', foreignKey: 'userId' });
     }
@@ -324,25 +327,44 @@ export default class FleetService extends Service {
   // 创建货运记录
   async createTransportRecord(recordData: any, userId: number) {
     const { ctx } = this;
-    const { TransportRecordModel, VehicleModel } = await this.loadModels();
+    const { TransportRecordModel, VehicleModel, FleetMemberModel } = await this.loadModels();
 
-    // 验证车辆权限：车辆所有者或车队管理员可以创建记录
+    // 验证车辆存在
     const vehicle = await VehicleModel.findByPk(recordData.vehicleId);
     if (!vehicle) {
       ctx.throw(404, '车辆不存在');
     }
     const vehicleData = vehicle.toJSON ? vehicle.toJSON() : vehicle;
-    const fleetId = (vehicleData as any).fleetId;
+    const vehicleFleetId = (vehicleData as any).fleetId;
     const vehicleUserId = (vehicleData as any).userId;
 
-    // 如果是个人车辆，检查 userId 是否匹配
-    if (!fleetId || fleetId === null) {
-      if (vehicleUserId !== userId) {
-        ctx.throw(403, '车辆不存在或不属于当前用户');
+    // 处理 fleetId 参数
+    const requestFleetId = recordData.fleetId !== undefined && recordData.fleetId !== null && recordData.fleetId !== '' 
+      ? Number(recordData.fleetId) 
+      : null;
+
+    if (requestFleetId !== null && Number.isFinite(requestFleetId) && requestFleetId > 0) {
+      // 如果提供了 fleetId，验证用户是车队成员
+      const member = await FleetMemberModel.findOne({
+        where: { fleetId: requestFleetId, userId },
+      });
+      if (!member) {
+        ctx.throw(403, '无权访问该车队的数据');
+      }
+      // 验证车辆属于该车队
+      if (vehicleFleetId !== requestFleetId) {
+        ctx.throw(400, '车辆不属于指定的车队');
       }
     } else {
-      // 如果是车队车辆，检查用户是否是车队管理员
-      await this.checkFleetAdmin(fleetId, userId);
+      // 如果没有提供 fleetId，验证车辆属于当前用户
+      if (!vehicleFleetId || vehicleFleetId === null) {
+        if (vehicleUserId !== userId) {
+          ctx.throw(403, '车辆不存在或不属于当前用户');
+        }
+      } else {
+        // 如果是车队车辆但没有提供 fleetId，检查用户是否是车队管理员
+        await this.checkFleetAdmin(vehicleFleetId, userId);
+      }
     }
 
     // 转换金额字段为数字
@@ -356,6 +378,13 @@ export default class FleetService extends Service {
       mealCost: this.parseDecimal(recordData.mealCost),
       otherExpense: this.parseDecimal(recordData.otherExpense),
     };
+
+    // 设置 fleetId（如果提供了则使用，否则使用车辆所属的车队ID，如果车辆是个人车辆则为 null）
+    if (requestFleetId !== null && Number.isFinite(requestFleetId) && requestFleetId > 0) {
+      payload.fleetId = requestFleetId;
+    } else {
+      payload.fleetId = vehicleFleetId || null;
+    }
 
     // 处理图片数组
     if (payload.images && !Array.isArray(payload.images)) {
@@ -489,7 +518,7 @@ export default class FleetService extends Service {
 
   // 获取货运记录列表
   async getTransportRecordList(query: any, userId: number) {
-    const { page = 1, pageSize = 10, vehicleId, startDate, endDate, isReconciled } = query;
+    const { page = 1, pageSize = 10, vehicleId, startDate, endDate, isReconciled, fleetId } = query;
     const pageNum = Number(page) || 1;
     const pageSizeNum = Number(pageSize) || 10;
 
@@ -505,63 +534,114 @@ export default class FleetService extends Service {
         ctx.throw(404, '车辆不存在');
       }
       const vehicleData = vehicle.toJSON ? vehicle.toJSON() : vehicle;
-      const fleetId = (vehicleData as any).fleetId;
+      const vehicleFleetId = (vehicleData as any).fleetId;
       const vehicleUserId = (vehicleData as any).userId;
 
-      // 如果是个人车辆，检查 userId 是否匹配
-      if (!fleetId || fleetId === null) {
-        if (vehicleUserId !== userId) {
-          const { ctx } = this;
-          ctx.throw(403, '车辆不存在或不属于当前用户');
+      // 如果提供了 fleetId，验证车辆属于该车队
+      if (fleetId !== undefined && fleetId !== null && fleetId !== '') {
+        const fleetIdNum = Number(fleetId);
+        if (Number.isFinite(fleetIdNum) && fleetIdNum > 0) {
+          // 检查用户是否在该车队中
+          const member = await FleetMemberModel.findOne({
+            where: { fleetId: fleetIdNum, userId },
+          });
+          if (!member) {
+            const { ctx } = this;
+            ctx.throw(403, '无权访问该车队的记录');
+          }
+          // 验证车辆属于该车队
+          if (vehicleFleetId !== fleetIdNum) {
+            const { ctx } = this;
+            ctx.throw(400, '车辆不属于指定的车队');
+          }
         }
       } else {
-        // 如果是车队车辆，检查用户是否是车队管理员
-        await this.checkFleetAdmin(fleetId, userId);
+        // 如果没有提供 fleetId，检查个人车辆权限
+        if (!vehicleFleetId || vehicleFleetId === null) {
+          if (vehicleUserId !== userId) {
+            const { ctx } = this;
+            ctx.throw(403, '车辆不存在或不属于当前用户');
+          }
+        } else {
+          // 如果是车队车辆，检查用户是否是车队管理员
+          await this.checkFleetAdmin(vehicleFleetId, userId);
+        }
       }
       where.vehicleId = vehicleId;
     } else {
-      // 如果没有指定 vehicleId，查询个人车辆 + 用户是管理员的车队车辆
-      // 1. 获取个人车辆
-      const personalVehicles = await VehicleModel.findAll({
-        where: { userId, fleetId: null },
-        attributes: ['id'],
-        raw: true,
-      });
-      const personalVehicleIds = personalVehicles.map((v: any) => v.id);
-
-      // 2. 获取用户是管理员或创建者的车队ID
-      const adminMembers = await FleetMemberModel.findAll({
-        where: { userId, role: { [Op.in]: ['admin', 'creator'] } },
-        attributes: ['fleetId'],
-        raw: true,
-      });
-      const adminFleetIds = adminMembers.map((m: any) => m.fleetId);
-
-      // 3. 获取这些车队的所有车辆
-      let fleetVehicleIds: number[] = [];
-      if (adminFleetIds.length > 0) {
-        const fleetVehicles = await VehicleModel.findAll({
-          where: { fleetId: { [Op.in]: adminFleetIds } },
+      // 如果没有指定 vehicleId，根据 fleetId 决定查询范围
+      if (fleetId !== undefined && fleetId !== null && fleetId !== '') {
+        const fleetIdNum = Number(fleetId);
+        if (Number.isFinite(fleetIdNum) && fleetIdNum > 0) {
+          // 检查用户是否在该车队中
+          const member = await FleetMemberModel.findOne({
+            where: { fleetId: fleetIdNum, userId },
+          });
+          if (!member) {
+            const { ctx } = this;
+            ctx.throw(403, '无权访问该车队的记录');
+          }
+          // 获取该车队的所有车辆
+          const fleetVehicles = await VehicleModel.findAll({
+            where: { fleetId: fleetIdNum },
+            attributes: ['id'],
+            raw: true,
+          });
+          const fleetVehicleIds = fleetVehicles.map((v: any) => v.id);
+          if (fleetVehicleIds.length === 0) {
+            return {
+              list: [],
+              pagination: {
+                total: 0,
+                page: pageNum,
+                pageSize: pageSizeNum,
+                totalPages: 0,
+              },
+            };
+          }
+          where.vehicleId = { [Op.in]: fleetVehicleIds };
+        } else {
+          // fleetId 为 null 或空字符串，查询个人车辆
+          const personalVehicles = await VehicleModel.findAll({
+            where: { userId, fleetId: null },
+            attributes: ['id'],
+            raw: true,
+          });
+          const personalVehicleIds = personalVehicles.map((v: any) => v.id);
+          if (personalVehicleIds.length === 0) {
+            return {
+              list: [],
+              pagination: {
+                total: 0,
+                page: pageNum,
+                pageSize: pageSizeNum,
+                totalPages: 0,
+              },
+            };
+          }
+          where.vehicleId = { [Op.in]: personalVehicleIds };
+        }
+      } else {
+        // 未提供 fleetId，只查询个人车辆
+        const personalVehicles = await VehicleModel.findAll({
+          where: { userId, fleetId: null },
           attributes: ['id'],
           raw: true,
         });
-        fleetVehicleIds = fleetVehicles.map((v: any) => v.id);
+        const personalVehicleIds = personalVehicles.map((v: any) => v.id);
+        if (personalVehicleIds.length === 0) {
+          return {
+            list: [],
+            pagination: {
+              total: 0,
+              page: pageNum,
+              pageSize: pageSizeNum,
+              totalPages: 0,
+            },
+          };
+        }
+        where.vehicleId = { [Op.in]: personalVehicleIds };
       }
-
-      // 4. 合并车辆ID列表
-      const allVehicleIds = [...personalVehicleIds, ...fleetVehicleIds];
-      if (allVehicleIds.length === 0) {
-        return {
-          list: [],
-          pagination: {
-            total: 0,
-            page: pageNum,
-            pageSize: pageSizeNum,
-            totalPages: 0,
-          },
-        };
-      }
-      where.vehicleId = { [Op.in]: allVehicleIds };
     }
 
     if (startDate || endDate) {
@@ -697,7 +777,7 @@ export default class FleetService extends Service {
     const { startDate, endDate, fleetId } = query;
 
     // 构建车辆查询条件
-    let vehicleWhere: any = { userId };
+    let vehicleWhere: any;
     
     // 如果提供了 fleetId，需要检查用户是否在该车队中
     if (fleetId !== undefined && fleetId !== null && fleetId !== '') {
@@ -711,14 +791,15 @@ export default class FleetService extends Service {
           const { ctx } = this;
           ctx.throw(403, '无权访问该车队的统计数据');
         }
-        vehicleWhere.fleetId = fleetIdNum;
+        // 返回该车队的所有车辆（不限制 userId）
+        vehicleWhere = { fleetId: fleetIdNum };
       } else {
         // fleetId 为 null 或空字符串，表示查询个人车辆
-        vehicleWhere.fleetId = null;
+        vehicleWhere = { userId, fleetId: null };
       }
     } else {
-      // 未提供 fleetId，统计用户的所有车辆（包括个人和车队车辆）
-      // 不添加 fleetId 条件
+      // 未提供 fleetId，只返回个人车辆
+      vehicleWhere = { userId, fleetId: null };
     }
 
     // 获取车辆
@@ -783,7 +864,7 @@ export default class FleetService extends Service {
       throw new Error('Sequelize instance not available');
     }
 
-    const { startDate, endDate, vehicleId, period = 'custom', isReconciled } = query;
+    const { startDate, endDate, vehicleId, period = 'custom', isReconciled, fleetId } = query;
 
     // 获取用户的所有车辆
     let vehicleIds: number[] = [];
@@ -795,51 +876,78 @@ export default class FleetService extends Service {
         ctx.throw(404, '车辆不存在');
       }
       const vehicleData = vehicle.toJSON ? vehicle.toJSON() : vehicle;
-      const fleetId = (vehicleData as any).fleetId;
+      const vehicleFleetId = (vehicleData as any).fleetId;
       const vehicleUserId = (vehicleData as any).userId;
 
-      // 如果是个人车辆，检查 userId 是否匹配
-      if (!fleetId || fleetId === null) {
-        if (vehicleUserId !== userId) {
-          const { ctx } = this;
-          ctx.throw(403, '车辆不存在或不属于当前用户');
+      // 如果提供了 fleetId，验证车辆属于该车队
+      if (fleetId !== undefined && fleetId !== null && fleetId !== '') {
+        const fleetIdNum = Number(fleetId);
+        if (Number.isFinite(fleetIdNum) && fleetIdNum > 0) {
+          // 检查用户是否在该车队中
+          const member = await FleetMemberModel.findOne({
+            where: { fleetId: fleetIdNum, userId },
+          });
+          if (!member) {
+            const { ctx } = this;
+            ctx.throw(403, '无权访问该车队的统计数据');
+          }
+          // 验证车辆属于该车队
+          if (vehicleFleetId !== fleetIdNum) {
+            const { ctx } = this;
+            ctx.throw(400, '车辆不属于指定的车队');
+          }
         }
       } else {
-        // 如果是车队车辆，检查用户是否是车队管理员
-        await this.checkFleetAdmin(fleetId, userId);
+        // 如果没有提供 fleetId，检查个人车辆权限
+        if (!vehicleFleetId || vehicleFleetId === null) {
+          if (vehicleUserId !== userId) {
+            const { ctx } = this;
+            ctx.throw(403, '车辆不存在或不属于当前用户');
+          }
+        } else {
+          // 如果是车队车辆，检查用户是否是车队管理员
+          await this.checkFleetAdmin(vehicleFleetId, userId);
+        }
       }
       vehicleIds = [vehicleId];
     } else {
-      // 如果没有指定 vehicleId，查询个人车辆 + 用户是管理员的车队车辆
-      // 1. 获取个人车辆
-      const personalVehicles = await VehicleModel.findAll({
-        where: { userId, fleetId: null },
-        attributes: ['id'],
-        raw: true,
-      });
-      const personalVehicleIds = personalVehicles.map((v: any) => v.id);
-
-      // 2. 获取用户是管理员或创建者的车队ID
-      const adminMembers = await FleetMemberModel.findAll({
-        where: { userId, role: { [Op.in]: ['admin', 'creator'] } },
-        attributes: ['fleetId'],
-        raw: true,
-      });
-      const adminFleetIds = adminMembers.map((m: any) => m.fleetId);
-
-      // 3. 获取这些车队的所有车辆
-      let fleetVehicleIds: number[] = [];
-      if (adminFleetIds.length > 0) {
-        const fleetVehicles = await VehicleModel.findAll({
-          where: { fleetId: { [Op.in]: adminFleetIds } },
+      // 如果没有指定 vehicleId，根据 fleetId 决定查询范围
+      if (fleetId !== undefined && fleetId !== null && fleetId !== '') {
+        const fleetIdNum = Number(fleetId);
+        if (Number.isFinite(fleetIdNum) && fleetIdNum > 0) {
+          // 检查用户是否在该车队中
+          const member = await FleetMemberModel.findOne({
+            where: { fleetId: fleetIdNum, userId },
+          });
+          if (!member) {
+            const { ctx } = this;
+            ctx.throw(403, '无权访问该车队的统计数据');
+          }
+          // 获取该车队的所有车辆
+          const fleetVehicles = await VehicleModel.findAll({
+            where: { fleetId: fleetIdNum },
+            attributes: ['id'],
+            raw: true,
+          });
+          vehicleIds = fleetVehicles.map((v: any) => v.id);
+        } else {
+          // fleetId 为 null 或空字符串，查询个人车辆
+          const personalVehicles = await VehicleModel.findAll({
+            where: { userId, fleetId: null },
+            attributes: ['id'],
+            raw: true,
+          });
+          vehicleIds = personalVehicles.map((v: any) => v.id);
+        }
+      } else {
+        // 未提供 fleetId，只查询个人车辆
+        const personalVehicles = await VehicleModel.findAll({
+          where: { userId, fleetId: null },
           attributes: ['id'],
           raw: true,
         });
-        fleetVehicleIds = fleetVehicles.map((v: any) => v.id);
+        vehicleIds = personalVehicles.map((v: any) => v.id);
       }
-
-      // 4. 合并车辆ID列表
-      vehicleIds = [...personalVehicleIds, ...fleetVehicleIds];
     }
 
     if (vehicleIds.length === 0) {
