@@ -35,11 +35,11 @@ export default (app) => {
   router.put('/lpwx/fleet/vehicles/:id', controller.fleet.updateVehicle);
   router.delete('/lpwx/fleet/vehicles/:id', controller.fleet.deleteVehicle);
   router.post('/lpwx/fleet/vehicles/:id/images', controller.fleet.uploadVehicleImage);
-  router.get('/lpwx/fleet/transport-records', controller.fleet.listTransportRecords);
-  router.get('/lpwx/fleet/transport-records/:id', controller.fleet.getTransportRecord);
-  router.post('/lpwx/fleet/transport-records', controller.fleet.createTransportRecord);
-  router.put('/lpwx/fleet/transport-records/:id', controller.fleet.updateTransportRecord);
-  router.delete('/lpwx/fleet/transport-records/:id', controller.fleet.deleteTransportRecord);
+  router.get('/lpwx/fleet/income-expense-records', controller.fleet.listTransportRecords);
+  router.get('/lpwx/fleet/income-expense-records/:id', controller.fleet.getTransportRecord);
+  router.post('/lpwx/fleet/income-expense-records', controller.fleet.createTransportRecord);
+  router.put('/lpwx/fleet/income-expense-records/:id', controller.fleet.updateTransportRecord);
+  router.delete('/lpwx/fleet/income-expense-records/:id', controller.fleet.deleteTransportRecord);
   router.get('/lpwx/fleet/stats/overview', controller.fleet.getOverviewStats);
   router.get('/lpwx/fleet/stats/reconciliation', controller.fleet.getReconciliationStats);
 

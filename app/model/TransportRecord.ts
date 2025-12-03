@@ -48,15 +48,15 @@ export default (app) => {
         defaultValue: 0,
         comment: '维修费',
       },
-      accommodationCost: {
+      parkingCost: {
         type: DECIMAL(10, 2),
         defaultValue: 0,
-        comment: '住宿费',
+        comment: '停车费',
       },
-      mealCost: {
+      clearanceCost: {
         type: DECIMAL(10, 2),
         defaultValue: 0,
-        comment: '饭费',
+        comment: '通关费',
       },
       otherExpense: {
         type: DECIMAL(10, 2),

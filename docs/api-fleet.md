@@ -2,7 +2,7 @@
 
 ## 接口概览
 
-车队管理接口提供车辆管理、货运记录管理、统计对账功能。所有接口都需要微信小程序用户登录认证。
+车队管理接口提供车辆管理、收支记录管理、统计对账功能。所有接口都需要微信小程序用户登录认证。
 
 **基础路径：** `/api/lpwx/fleet`
 
@@ -12,7 +12,7 @@
 
 **数据隔离：**
 - 所有接口自动根据当前登录用户的 `userId` 过滤数据
-- 用户只能访问自己的车辆和货运记录
+- 用户只能访问自己的车辆和收支记录
 - 访问其他用户资源时返回 403 Forbidden
 
 ---
@@ -36,7 +36,7 @@
 
 **重要说明：**
 1. **排序规则**：接口固定按利润（profit）降序排序，不支持排序参数。前端如需其他排序方式，请在本地进行排序。
-2. **返回数据**：接口总是返回用户的所有车辆，即使指定日期范围内没有货运记录也会显示（统计字段为 0）。
+2. **返回数据**：接口总是返回用户的所有车辆，即使指定日期范围内没有收支记录也会显示（统计字段为 0）。
 3. **日期范围**：`startDate` 和 `endDate` 用于计算每辆车在指定日期范围内的收入和支出统计。如果未提供日期参数，默认使用最近30天。
 
 **请求示例：**
@@ -98,7 +98,7 @@ X-Token: <微信小程序用户token>
   - `certificateImages`: 证件图片URL数组（如果为 null 会自动转为空数组 `[]`）
   - `otherImages`: 其它图片URL数组（如果为 null 会自动转为空数组 `[]`）
   - **`income`**: 该车辆在指定日期范围内的总收入（字符串格式，单位：元）。计算方式：`freight`（运费）+ `otherIncome`（其它收入）的总和。如果指定日期范围内没有记录，返回 `"0"`
-  - **`expense`**: 该车辆在指定日期范围内的总支出（字符串格式，单位：元）。计算方式：`fuelCost`（油费）+ `repairCost`（维修费）+ `accommodationCost`（住宿费）+ `mealCost`（饭费）+ `otherExpense`（其它费用）的总和。如果指定日期范围内没有记录，返回 `"0"`
+  - **`expense`**: 该车辆在指定日期范围内的总支出（字符串格式，单位：元）。计算方式：`fuelCost`（油费）+ `repairCost`（维修费）+ `parkingCost`（停车费）+ `clearanceCost`（通关费）+ `otherExpense`（其它费用）的总和。如果指定日期范围内没有记录，返回 `"0"`
   - **`profit`**: 该车辆在指定日期范围内的利润（字符串格式，单位：元）。计算方式：`income - expense`。如果指定日期范围内没有记录，返回 `"0"`
   - `createdAt`: 创建时间
   - `updatedAt`: 更新时间
@@ -109,8 +109,8 @@ X-Token: <微信小程序用户token>
   - `totalPages`: 总页数
 
 **收入和支出计算说明：**
-- 收入和支出基于指定日期范围内的货运记录（`transport_records`）计算
-- 如果车辆在指定日期范围内没有货运记录，`income`、`expense`、`profit` 字段均为 `"0"`
+- 收入和支出基于指定日期范围内的收支记录（`transport_records`）计算
+- 如果车辆在指定日期范围内没有收支记录，`income`、`expense`、`profit` 字段均为 `"0"`
 - 车辆基本信息（品牌、马力等）始终返回，不受日期范围影响
 
 ---
@@ -364,11 +364,11 @@ imageType: certificate
 
 ---
 
-## 二、货运记录管理接口
+## 二、收支记录管理接口
 
-### 2.1 获取货运记录列表
+### 2.1 获取收支记录列表
 
-**接口：** `GET /api/lpwx/fleet/transport-records`
+**接口：** `GET /api/lpwx/fleet/income-expense-records`
 
 **权限：** 微信小程序用户（需登录）
 
@@ -392,7 +392,7 @@ imageType: certificate
 **请求示例：**
 ```bash
 # 获取全部记录
-GET /api/lpwx/fleet/transport-records?page=1&pageSize=10
+GET /api/lpwx/fleet/income-expense-records?page=1&pageSize=10
 
 # 获取已对账的记录
 GET /api/lpwx/fleet/transport-records?isReconciled=true
@@ -401,7 +401,7 @@ GET /api/lpwx/fleet/transport-records?isReconciled=true
 GET /api/lpwx/fleet/transport-records?isReconciled=false
 
 # 按车辆和日期筛选
-GET /api/lpwx/fleet/transport-records?vehicleId=1&startDate=2025-01-01&endDate=2025-01-31&isReconciled=true
+GET /api/lpwx/fleet/income-expense-records?vehicleId=1&startDate=2025-01-01&endDate=2025-01-31&isReconciled=true
 
 X-Token: <微信小程序用户token>
 ```
@@ -422,8 +422,8 @@ X-Token: <微信小程序用户token>
         "otherIncome": "200",
         "fuelCost": "300",
         "repairCost": "100",
-        "accommodationCost": "150",
-        "mealCost": "80",
+        "parkingCost": "150",
+        "clearanceCost": "80",
         "otherExpense": "50",
         "remark": "备注信息",
         "images": ["/uploads/2025-01-15/123/image1.jpg"],
@@ -443,7 +443,7 @@ X-Token: <微信小程序用户token>
 ```
 
 **响应字段说明：**
-- `list`: 货运记录列表数组
+- `list`: 收支记录列表数组
   - `id`: 记录ID
   - `vehicleId`: 车辆ID
   - `goodsName`: 货物名称（必填，最大200字符）
@@ -452,8 +452,8 @@ X-Token: <微信小程序用户token>
   - `otherIncome`: 其它费用（字符串格式，必填）
   - `fuelCost`: 油费（字符串格式，必填）
   - `repairCost`: 维修费（字符串格式，必填）
-  - `accommodationCost`: 住宿费（字符串格式，必填）
-  - `mealCost`: 饭费（字符串格式，必填）
+  - `parkingCost`: 停车费（字符串格式，必填）
+  - `clearanceCost`: 通关费（字符串格式，必填）
   - `otherExpense`: 其它费用（字符串格式，必填）
   - `remark`: 备注（可选）
   - `images`: 图片URL数组（如果为 null 会自动转为空数组 `[]`）
@@ -466,9 +466,9 @@ X-Token: <微信小程序用户token>
 
 ---
 
-### 2.2 获取货运记录详情
+### 2.2 获取收支记录详情
 
-**接口：** `GET /api/lpwx/fleet/transport-records/:id`
+**接口：** `GET /api/lpwx/fleet/income-expense-records/:id`
 
 **权限：** 微信小程序用户（需登录），只能获取自己车辆的记录
 
@@ -480,7 +480,7 @@ X-Token: <微信小程序用户token>
 
 **请求示例：**
 ```bash
-GET /api/lpwx/fleet/transport-records/1
+GET /api/lpwx/fleet/income-expense-records/1
 X-Token: <微信小程序用户token>
 ```
 
@@ -516,9 +516,9 @@ X-Token: <微信小程序用户token>
 
 ---
 
-### 2.3 创建货运记录
+### 2.3 创建收支记录
 
-**接口：** `POST /api/lpwx/fleet/transport-records`
+**接口：** `POST /api/lpwx/fleet/income-expense-records`
 
 **权限：** 微信小程序用户（需登录）
 
@@ -533,8 +533,8 @@ X-Token: <微信小程序用户token>
 | `otherIncome` | string | 是 | 其它费用 | `"200"` |
 | `fuelCost` | string | 是 | 油费 | `"300"` |
 | `repairCost` | string | 是 | 维修费 | `"100"` |
-| `accommodationCost` | string | 是 | 住宿费 | `"150"` |
-| `mealCost` | string | 是 | 饭费 | `"80"` |
+| `parkingCost` | string | 是 | 停车费 | `"150"` |
+| `clearanceCost` | string | 是 | 通关费 | `"80"` |
 | `otherExpense` | string | 是 | 其它费用 | `"50"` |
 | `remark` | string | 否 | 备注 | `"备注信息"` |
 | `images` | array | 否 | 图片URL数组 | `["/uploads/.../image1.jpg"]` |
@@ -543,7 +543,7 @@ X-Token: <微信小程序用户token>
 
 **请求示例：**
 ```bash
-POST /api/lpwx/fleet/transport-records
+POST /api/lpwx/fleet/income-expense-records
 X-Token: <微信小程序用户token>
 Content-Type: application/json
 
@@ -595,9 +595,9 @@ Content-Type: application/json
 
 ---
 
-### 2.4 更新货运记录
+### 2.4 更新收支记录
 
-**接口：** `PUT /api/lpwx/fleet/transport-records/:id`
+**接口：** `PUT /api/lpwx/fleet/income-expense-records/:id`
 
 **权限：** 微信小程序用户（需登录），只能更新自己车辆的记录
 
@@ -618,8 +618,8 @@ Content-Type: application/json
 | `otherIncome` | string | 否 | 其它费用 |
 | `fuelCost` | string | 否 | 油费 |
 | `repairCost` | string | 否 | 维修费 |
-| `accommodationCost` | string | 否 | 住宿费 |
-| `mealCost` | string | 否 | 饭费 |
+| `parkingCost` | string | 否 | 停车费 |
+| `clearanceCost` | string | 否 | 通关费 |
 | `otherExpense` | string | 否 | 其它费用 |
 | `remark` | string | 否 | 备注 |
 | `images` | array | 否 | 图片URL数组 |
@@ -635,7 +635,7 @@ Content-Type: application/json
 **请求示例：**
 ```bash
 # 标记记录为已对账
-PUT /api/lpwx/fleet/transport-records/1
+PUT /api/lpwx/fleet/income-expense-records/1
 X-Token: <微信小程序用户token>
 Content-Type: application/json
 
@@ -644,7 +644,7 @@ Content-Type: application/json
 }
 
 # 同时更新多个字段
-PUT /api/lpwx/fleet/transport-records/1
+PUT /api/lpwx/fleet/income-expense-records/1
 X-Token: <微信小程序用户token>
 Content-Type: application/json
 
@@ -687,9 +687,9 @@ Content-Type: application/json
 
 ---
 
-### 2.5 删除货运记录
+### 2.5 删除收支记录
 
-**接口：** `DELETE /api/lpwx/fleet/transport-records/:id`
+**接口：** `DELETE /api/lpwx/fleet/income-expense-records/:id`
 
 **权限：** 微信小程序用户（需登录），只能删除自己车辆的记录
 
@@ -701,7 +701,7 @@ Content-Type: application/json
 
 **请求示例：**
 ```bash
-DELETE /api/lpwx/fleet/transport-records/1
+DELETE /api/lpwx/fleet/income-expense-records/1
 X-Token: <微信小程序用户token>
 ```
 
@@ -827,12 +827,12 @@ X-Token: <微信小程序用户token>
       },
       {
         "category": "accommodation",
-        "categoryLabel": "住宿费",
+        "categoryLabel": "停车费",
         "amount": 20000
       },
       {
         "category": "meal",
-        "categoryLabel": "饭费",
+        "categoryLabel": "通关费",
         "amount": 15000
       },
       {
@@ -914,13 +914,13 @@ GET /api/lpwx/fleet/transport-records?isReconciled=false
 
 ```javascript
 // 标记记录为已对账
-PUT /api/lpwx/fleet/transport-records/:id
+PUT /api/lpwx/fleet/income-expense-records/:id
 {
   "isReconciled": true
 }
 
 // 标记记录为未对账
-PUT /api/lpwx/fleet/transport-records/:id
+PUT /api/lpwx/fleet/income-expense-records/:id
 {
   "isReconciled": false
 }
@@ -975,8 +975,8 @@ POST /api/lpwx/fleet/vehicles
   "trailerLength": "13米"
 }
 
-// 2. 创建货运记录（默认未对账）
-POST /api/lpwx/fleet/transport-records
+// 2. 创建收支记录（默认未对账）
+POST /api/lpwx/fleet/income-expense-records
 {
   "vehicleId": 1,
   "goodsName": "货物A",
@@ -991,7 +991,7 @@ POST /api/lpwx/fleet/transport-records
 }
 
 // 3. 标记为已对账
-PUT /api/lpwx/fleet/transport-records/1
+PUT /api/lpwx/fleet/income-expense-records/1
 {
   "isReconciled": true
 }
@@ -1011,7 +1011,7 @@ GET /api/lpwx/fleet/transport-records?isReconciled=false
 
 // 2. 用户选择记录进行对账
 // 3. 批量标记为已对账
-PUT /api/lpwx/fleet/transport-records/1
+PUT /api/lpwx/fleet/income-expense-records/1
 {
   "isReconciled": true
 }

@@ -9,7 +9,7 @@
 车队管理模块包含以下三个表：
 
 1. **vehicles** - 车辆信息表
-2. **transport_records** - 货运记录表
+2. **transport_records** - 收支记录表
 3. **certificate_share_tokens** - 证件分享 Token 表
 
 ## 三、部署步骤
@@ -91,7 +91,7 @@ SHOW INDEX FROM certificate_share_tokens;
 | `createdAt` | DATETIME | 创建时间 | - |
 | `updatedAt` | DATETIME | 更新时间 | - |
 
-### 4.2 transport_records（货运记录表）
+### 4.2 transport_records（收支记录表）
 
 | 字段名 | 类型 | 说明 | 索引 |
 |--------|------|------|------|

@@ -10,8 +10,8 @@ const DECIMAL_FIELDS = [
   'otherIncome',
   'fuelCost',
   'repairCost',
-  'accommodationCost',
-  'mealCost',
+  'parkingCost',
+  'clearanceCost',
   'otherExpense',
 ] as const;
 
@@ -236,9 +236,9 @@ export default class FleetController extends Controller {
     }
   }
 
-  // ========== 货运记录管理 ==========
+  // ========== 收支记录管理 ==========
 
-  // 获取货运记录列表
+  // 获取收支记录列表
   async listTransportRecords() {
     const { ctx } = this;
     const query = { ...ctx.query } as any;
@@ -263,7 +263,7 @@ export default class FleetController extends Controller {
     };
   }
 
-  // 获取货运记录详情
+  // 获取收支记录详情
   async getTransportRecord() {
     const { ctx } = this;
     const id = Number(ctx.params && ctx.params.id);
@@ -279,7 +279,7 @@ export default class FleetController extends Controller {
     };
   }
 
-  // 创建货运记录
+  // 创建收支记录
   async createTransportRecord() {
     const { ctx } = this;
     const body = ctx.request.body;
@@ -293,8 +293,8 @@ export default class FleetController extends Controller {
         otherIncome: { type: 'string', required: true, allowEmpty: false },
         fuelCost: { type: 'string', required: true, allowEmpty: false },
         repairCost: { type: 'string', required: true, allowEmpty: false },
-        accommodationCost: { type: 'string', required: true, allowEmpty: false },
-        mealCost: { type: 'string', required: true, allowEmpty: false },
+        parkingCost: { type: 'string', required: true, allowEmpty: false },
+        clearanceCost: { type: 'string', required: true, allowEmpty: false },
         otherExpense: { type: 'string', required: true, allowEmpty: false },
         remark: { type: 'string', required: false, allowEmpty: true },
         images: { type: 'array', required: false },
@@ -312,7 +312,7 @@ export default class FleetController extends Controller {
     };
   }
 
-  // 更新货运记录
+  // 更新收支记录
   async updateTransportRecord() {
     const { ctx } = this;
     const id = Number(ctx.params && ctx.params.id);
@@ -330,8 +330,8 @@ export default class FleetController extends Controller {
         otherIncome: { type: 'string', required: false, allowEmpty: false },
         fuelCost: { type: 'string', required: false, allowEmpty: false },
         repairCost: { type: 'string', required: false, allowEmpty: false },
-        accommodationCost: { type: 'string', required: false, allowEmpty: false },
-        mealCost: { type: 'string', required: false, allowEmpty: false },
+        parkingCost: { type: 'string', required: false, allowEmpty: false },
+        clearanceCost: { type: 'string', required: false, allowEmpty: false },
         otherExpense: { type: 'string', required: false, allowEmpty: false },
         remark: { type: 'string', required: false, allowEmpty: true },
         images: { type: 'array', required: false },
@@ -349,7 +349,7 @@ export default class FleetController extends Controller {
     };
   }
 
-  // 删除货运记录
+  // 删除收支记录
   async deleteTransportRecord() {
     const { ctx } = this;
     const id = Number(ctx.params && ctx.params.id);

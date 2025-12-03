@@ -219,7 +219,7 @@ export default class FleetService extends Service {
       attributes: [
         'vehicleId',
         [sequelize.fn('SUM', sequelize.literal('freight + otherIncome')), 'income'],
-        [sequelize.fn('SUM', sequelize.literal('fuelCost + repairCost + accommodationCost + mealCost + otherExpense')), 'expense'],
+        [sequelize.fn('SUM', sequelize.literal('fuelCost + repairCost + parkingCost + clearanceCost + otherExpense')), 'expense'],
       ],
       group: ['vehicleId'],
       raw: true,
@@ -322,9 +322,9 @@ export default class FleetService extends Service {
     };
   }
 
-  // ========== 货运记录管理 ==========
+  // ========== 收支记录管理 ==========
 
-  // 创建货运记录
+  // 创建收支记录
   async createTransportRecord(recordData: any, userId: number) {
     const { ctx } = this;
     const { TransportRecordModel, VehicleModel } = await this.loadModels();
@@ -370,8 +370,8 @@ export default class FleetService extends Service {
       otherIncome: this.parseDecimal(recordData.otherIncome),
       fuelCost: this.parseDecimal(recordData.fuelCost),
       repairCost: this.parseDecimal(recordData.repairCost),
-      accommodationCost: this.parseDecimal(recordData.accommodationCost),
-      mealCost: this.parseDecimal(recordData.mealCost),
+      parkingCost: this.parseDecimal(recordData.parkingCost),
+      clearanceCost: this.parseDecimal(recordData.clearanceCost),
       otherExpense: this.parseDecimal(recordData.otherExpense),
     };
 
@@ -390,7 +390,7 @@ export default class FleetService extends Service {
     return await TransportRecordModel.create(payload);
   }
 
-  // 更新货运记录
+  // 更新收支记录
   async updateTransportRecord(id: number, recordData: any, userId: number) {
     const { ctx } = this;
     const { TransportRecordModel, VehicleModel } = await this.loadModels();
@@ -457,8 +457,8 @@ export default class FleetService extends Service {
     if (updateData.otherIncome !== undefined) updateData.otherIncome = this.parseDecimal(updateData.otherIncome);
     if (updateData.fuelCost !== undefined) updateData.fuelCost = this.parseDecimal(updateData.fuelCost);
     if (updateData.repairCost !== undefined) updateData.repairCost = this.parseDecimal(updateData.repairCost);
-    if (updateData.accommodationCost !== undefined) updateData.accommodationCost = this.parseDecimal(updateData.accommodationCost);
-    if (updateData.mealCost !== undefined) updateData.mealCost = this.parseDecimal(updateData.mealCost);
+    if (updateData.parkingCost !== undefined) updateData.parkingCost = this.parseDecimal(updateData.parkingCost);
+    if (updateData.clearanceCost !== undefined) updateData.clearanceCost = this.parseDecimal(updateData.clearanceCost);
     if (updateData.otherExpense !== undefined) updateData.otherExpense = this.parseDecimal(updateData.otherExpense);
 
     // 处理图片数组
@@ -469,7 +469,7 @@ export default class FleetService extends Service {
     return await record.update(updateData);
   }
 
-  // 删除货运记录
+  // 删除收支记录
   async deleteTransportRecord(id: number, userId: number) {
     const { ctx } = this;
     const { TransportRecordModel, VehicleModel } = await this.loadModels();
@@ -512,7 +512,7 @@ export default class FleetService extends Service {
     return true;
   }
 
-  // 获取货运记录列表
+  // 获取收支记录列表
   async getTransportRecordList(query: any, userId: number) {
     const { page = 1, pageSize = 10, vehicleId, startDate, endDate, isReconciled, fleetId } = query;
     const pageNum = Number(page) || 1;
@@ -694,7 +694,7 @@ export default class FleetService extends Service {
     };
   }
 
-  // 获取货运记录详情
+  // 获取收支记录详情
   async getTransportRecordDetail(id: number, userId: number) {
     const { ctx } = this;
     const { TransportRecordModel, VehicleModel } = await this.loadModels();
@@ -736,7 +736,7 @@ export default class FleetService extends Service {
     return this.formatTransportRecordItem(record);
   }
 
-  // 格式化货运记录数据
+  // 格式化收支记录数据
   private formatTransportRecordItem(record: any) {
     const raw = record && typeof record.toJSON === 'function' ? record.toJSON() : record;
     return {
@@ -747,8 +747,8 @@ export default class FleetService extends Service {
       otherIncome: String(raw.otherIncome || '0'),
       fuelCost: String(raw.fuelCost || '0'),
       repairCost: String(raw.repairCost || '0'),
-      accommodationCost: String(raw.accommodationCost || '0'),
-      mealCost: String(raw.mealCost || '0'),
+      parkingCost: String(raw.parkingCost || '0'),
+      clearanceCost: String(raw.clearanceCost || '0'),
       otherExpense: String(raw.otherExpense || '0'),
     };
   }
@@ -836,7 +836,7 @@ export default class FleetService extends Service {
       where,
       attributes: [
         [sequelize.fn('SUM', sequelize.literal('freight + otherIncome')), 'totalIncome'],
-        [sequelize.fn('SUM', sequelize.literal('fuelCost + repairCost + accommodationCost + mealCost + otherExpense')), 'totalExpense'],
+        [sequelize.fn('SUM', sequelize.literal('fuelCost + repairCost + parkingCost + clearanceCost + otherExpense')), 'totalExpense'],
       ],
       raw: true,
     });
@@ -1012,11 +1012,11 @@ export default class FleetService extends Service {
       attributes: [
         [sequelize.fn('COUNT', sequelize.col('id')), 'transportCount'],
         [sequelize.fn('SUM', sequelize.literal('freight + otherIncome')), 'totalIncome'],
-        [sequelize.fn('SUM', sequelize.literal('fuelCost + repairCost + accommodationCost + mealCost + otherExpense')), 'totalExpense'],
+        [sequelize.fn('SUM', sequelize.literal('fuelCost + repairCost + parkingCost + clearanceCost + otherExpense')), 'totalExpense'],
         [sequelize.fn('SUM', sequelize.col('fuelCost')), 'fuelTotal'],
         [sequelize.fn('SUM', sequelize.col('repairCost')), 'repairTotal'],
-        [sequelize.fn('SUM', sequelize.col('accommodationCost')), 'accommodationTotal'],
-        [sequelize.fn('SUM', sequelize.col('mealCost')), 'mealTotal'],
+        [sequelize.fn('SUM', sequelize.col('parkingCost')), 'parkingTotal'],
+        [sequelize.fn('SUM', sequelize.col('clearanceCost')), 'clearanceTotal'],
         [sequelize.fn('SUM', sequelize.col('otherExpense')), 'otherTotal'],
       ],
       raw: true,
@@ -1040,14 +1040,14 @@ export default class FleetService extends Service {
         amount: Number((summaryResult as any)?.repairTotal || 0),
       },
       {
-        category: 'accommodation',
-        categoryLabel: '住宿费',
-        amount: Number((summaryResult as any)?.accommodationTotal || 0),
+        category: 'parking',
+        categoryLabel: '停车费',
+        amount: Number((summaryResult as any)?.parkingTotal || 0),
       },
       {
-        category: 'meal',
-        categoryLabel: '饭费',
-        amount: Number((summaryResult as any)?.mealTotal || 0),
+        category: 'clearance',
+        categoryLabel: '通关费',
+        amount: Number((summaryResult as any)?.clearanceTotal || 0),
       },
       {
         category: 'other',
@@ -1062,7 +1062,7 @@ export default class FleetService extends Service {
       attributes: [
         'date',
         [sequelize.fn('SUM', sequelize.literal('freight + otherIncome')), 'income'],
-        [sequelize.fn('SUM', sequelize.literal('fuelCost + repairCost + accommodationCost + mealCost + otherExpense')), 'expense'],
+        [sequelize.fn('SUM', sequelize.literal('fuelCost + repairCost + parkingCost + clearanceCost + otherExpense')), 'expense'],
       ],
       group: ['date'],
       order: [['date', 'ASC']],
