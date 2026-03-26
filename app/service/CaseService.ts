@@ -82,6 +82,7 @@ export default class CaseService extends Service {
       ...raw,
       images: this.formatImages(raw?.images),
       tags: this.formatTags(raw?.tags),
+      internalImages: this.formatImages(raw?.internalImages),
     };
   }
 
@@ -139,6 +140,12 @@ export default class CaseService extends Service {
         const normalized = this.normalizeTags(caseData.tags);
         return normalized.length ? normalized : null;
       })(),
+      // 内部字段
+      internalWeight: caseData.internalWeight !== undefined ? caseData.internalWeight : null,
+      internalVehiclePlate: caseData.internalVehiclePlate || null,
+      internalImages: this.normalizeImagePaths(Array.isArray(caseData.internalImages) ? caseData.internalImages : []),
+      internalStatus: caseData.internalStatus || 'pending',
+      internalRemark: caseData.internalRemark || null,
     };
     const created = await CaseModel.create(payload);
     return this.formatCaseItem(created);
@@ -167,6 +174,22 @@ export default class CaseService extends Service {
     if (caseData.tags !== undefined) {
       const normalizedTags = this.normalizeTags(caseData.tags);
       updateData.tags = normalizedTags.length ? normalizedTags : null;
+    }
+    // 内部字段
+    if (caseData.internalWeight !== undefined) {
+      updateData.internalWeight = caseData.internalWeight;
+    }
+    if (caseData.internalVehiclePlate !== undefined) {
+      updateData.internalVehiclePlate = caseData.internalVehiclePlate || null;
+    }
+    if (caseData.internalImages !== undefined) {
+      updateData.internalImages = this.normalizeImagePaths(Array.isArray(caseData.internalImages) ? caseData.internalImages : []);
+    }
+    if (caseData.internalStatus !== undefined) {
+      updateData.internalStatus = caseData.internalStatus;
+    }
+    if (caseData.internalRemark !== undefined) {
+      updateData.internalRemark = caseData.internalRemark || null;
     }
     const updated = await caseItem.update(updateData);
     return this.formatCaseItem(updated);

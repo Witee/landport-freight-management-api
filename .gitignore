@@ -27,3 +27,5 @@ config/**/*.map
 .env.local
 .env.website-token
 .nginx.website-token.conf
+
+.workbuddy
