@@ -1,7 +1,7 @@
 export default {
   sequelize: {
     dialect: 'mysql',
-    host: '192.168.0.66',
+    host: 'test.dachengguoji.com.cn',
     port: 3306,
     database: 'landport',
     username: 'root',
@@ -34,7 +34,7 @@ export default {
   redis: {
     client: {
       port: 6379,
-      host: '192.168.0.66',
+      host: 'test.dachengguoji.com.cn',
       password: '',
       db: 0,
     },

@@ -2,7 +2,7 @@ export default {
   sequelize: {
     // 单测环境也统一东八区，避免断言受本机时区影响
     dialect: 'mysql',
-    host: process.env.MYSQL_HOST?.trim() || '192.168.0.66',
+    host: process.env.MYSQL_HOST?.trim() || 'test.dachengguoji.com.cn',
     port: parseInt(process.env.MYSQL_PORT || '3306', 10),
     database: process.env.MYSQL_DB?.trim() || 'landport_test',
     username: process.env.MYSQL_USER?.trim() || 'landport_test',
